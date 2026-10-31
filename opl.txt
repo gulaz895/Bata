@@ -1,0 +1,2056 @@
+-- Script Path: game:GetService("Players").NOOBNOhhehh.PlayerScripts.WeaponClient
+-- Took 0.1s to decompile.
+-- Executor: Delta (1.1.743.1136)
+
+local v_u_1 = require(game:GetService("ReplicatedStorage"):WaitForChild("WorldRefs"))
+local v_u_2 = require(game:GetService("ReplicatedStorage"):WaitForChild("SpawnShield"))
+local v_u_3 = game:GetService("Players")
+local v4 = game:GetService("ReplicatedStorage")
+local v5 = game:GetService("UserInputService")
+local v6 = game:GetService("RunService")
+local v_u_7 = v6:IsStudio()
+local v_u_8 = game:GetService("TweenService")
+game:GetService("SoundService")
+local v_u_9 = game:GetService("ContextActionService")
+local v10 = v4:WaitForChild("Weapons")
+local v_u_11 = require(v10:WaitForChild("Config"))
+local v_u_12 = require(v4:WaitForChild("Weapons"):WaitForChild("WeaponData"))
+local v_u_13 = require(v10:WaitForChild("ClientState"))
+local v_u_14 = nil
+local v_u_15 = 0
+local v_u_16 = 0
+task.spawn(function()
+    -- upvalues: (ref) v_u_14, (copy) v_u_13
+    v_u_14 = v_u_13.RecoilKey()
+end)
+local v_u_17 = require(v10:WaitForChild("Effects"))
+local v_u_18 = require(v10:WaitForChild("HitboxModel"))
+local v_u_19 = require(v10:WaitForChild("ClientHitboxes"))
+local v_u_20 = require(v10:WaitForChild("HitAudio"))
+local v_u_21 = require(v10:WaitForChild("GunAudio"))
+local v_u_22 = require(v10:WaitForChild("BoltAction"))
+local v_u_23 = require(v10:WaitForChild("Rocket"))
+local v_u_24 = require(v10:WaitForChild("VehicleSurface"))
+local v_u_25 = require(v10:WaitForChild("ModCatalog"))
+local v_u_26 = {
+    ["text"] = nil,
+    ["mods"] = nil,
+    ["mods"] = {}
+}
+local v_u_27 = setmetatable({}, {
+    ["__mode"] = "k"
+})
+local v_u_28 = v4:WaitForChild("Remotes")
+local v_u_29 = require(v4:WaitForChild("Controls"))
+local v_u_30 = require(v4:WaitForChild("NetLag"))
+local v_u_31 = v_u_3.LocalPlayer
+local v_u_32 = workspace.CurrentCamera
+local v_u_33 = workspace:WaitForChild("FX")
+local v_u_34 = v_u_11.Global
+local v_u_35 = Random.new()
+local v36 = nil
+local v_u_37 = Random.new():NextInteger(1, 1073741824)
+local v_u_38 = Vector2.zero
+local v_u_39 = Vector2.zero
+local v_u_40 = RaycastParams.new()
+v_u_40.IgnoreWater = true
+v_u_40.FilterType = Enum.RaycastFilterType.Exclude
+v_u_40.CollisionGroup = "Bullet"
+local v41 = v_u_31:WaitForChild("PlayerGui"):WaitForChild("WeaponHUD", (1 / 0))
+local v_u_42 = v41:WaitForChild("Hitmarker")
+local v_u_43 = v_u_42:FindFirstChildOfClass("UIScale")
+local v_u_44 = v36
+local v_u_45 = v_u_14
+local v_u_46 = {}
+local v_u_47 = {}
+local v_u_48 = false
+local v_u_49 = 0
+local v_u_50 = nil
+local v_u_51 = false
+local v_u_52 = 0
+local v_u_53 = nil
+local v_u_54 = false
+local v_u_55 = nil
+local v_u_56 = nil
+local v_u_57 = 0
+local v_u_58 = 0
+local v_u_59 = 0
+local v_u_60 = nil
+local v_u_61 = nil
+local v_u_62 = 0
+local v_u_63 = 0
+local v_u_64 = 999
+local v_u_65 = 0
+local v_u_66 = -1
+local v_u_67 = 0
+local v_u_68 = (-1 / 0)
+local v_u_69 = 0
+local v_u_70 = nil
+for _, v71 in v_u_42:GetChildren() do
+    if not v71:IsA("GuiObject") then
+        continue
+    end
+    table.insert(v_u_46, v71)
+end
+table.sort(v_u_46, function(p72, p73)
+    return p72.Name < p73.Name
+end)
+local v_u_74 = 0.3
+for v75, v76 in v_u_46 do
+    v_u_47[v75] = v76:FindFirstChildOfClass("UIStroke")
+    if v_u_47[v75] then
+        v_u_74 = v_u_47[v75].Transparency
+        v_u_47[v75].Transparency = 1
+    end
+    v76.BackgroundTransparency = 1
+end
+local v_u_77 = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.12)
+local v_u_78 = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local v79 = v41:WaitForChild("AmmoPanel")
+local v_u_80 = v79:WaitForChild("Ammo")
+local v_u_81 = v79:WaitForChild("WeaponName")
+local v_u_82 = v41:WaitForChild("Reload")
+require(v4:WaitForChild("ScaleUI")).Convert(v41)
+local v83 = v41:WaitForChild("DamageVignette")
+local v_u_84 = v83:GetAttribute("HealthColor") or Color3.fromRGB(110, 0, 0)
+local v_u_85 = v83:GetAttribute("ArmorColor") or Color3.fromRGB(0, 70, 175)
+local v_u_86 = {}
+for _, v87 in v83:GetChildren() do
+    if not v87:IsA("GuiObject") then
+        continue
+    end
+    v87.BackgroundTransparency = 1
+    table.insert(v_u_86, v87)
+end
+local v_u_88 = 0
+local v_u_89 = 0
+local v_u_90 = 0
+local v_u_91 = {
+    ["health"] = 0,
+    ["armor"] = 0
+}
+v6.RenderStepped:Connect(function(p92)
+    -- upvalues: (copy) v_u_13, (ref) v_u_90, (copy) v_u_86, (ref) v_u_88, (ref) v_u_89, (copy) v_u_84, (copy) v_u_85
+    if v_u_13.DamageVignetteExternal then
+        if v_u_90 ~= 0 then
+            v_u_90 = 0
+            for _, v93 in v_u_86 do
+                v93.BackgroundTransparency = 1
+            end
+        end
+    else
+        if v_u_13.Spectating then
+            v_u_88 = 0
+            v_u_89 = 0
+        end
+        local v94 = v_u_88
+        local v95 = -3.2 * p92
+        v_u_88 = v94 * math.exp(v95)
+        local v96 = v_u_89
+        local v97 = -3.2 * p92
+        v_u_89 = v96 * math.exp(v97)
+        local v98 = v_u_88 + v_u_89
+        local v99 = v_u_90
+        local v100 = math.min(v98, 0.42) - v_u_90
+        local v101 = p92 * 30
+        v_u_90 = v99 + v100 * math.min(1, v101)
+        local v102 = v_u_90 < 0.005 and 1 or 1 - v_u_90
+        local v103 = v98 > 0.0001 and v_u_84:Lerp(v_u_85, v_u_89 / v98) or v_u_84
+        for _, v104 in v_u_86 do
+            v104.BackgroundTransparency = v102
+            v104.BackgroundColor3 = v103
+        end
+    end
+end)
+v_u_80.Visible = false
+v_u_81.Visible = false
+v_u_82.Visible = false
+local function v_u_117() -- name: refreshAmmo
+    -- upvalues: (ref) v_u_70, (ref) v_u_67, (ref) v_u_62, (copy) v_u_80, (copy) v_u_34, (ref) v_u_44, (ref) v_u_65, (copy) v_u_81
+    if v_u_70 then
+        local v105 = v_u_67
+        local v106 = v_u_62 / 4
+        local v107 = v105 <= math.floor(v106) and string.format("<font color=\"#%s\">%d</font>", (v_u_80:GetAttribute("LowColor") or Color3.fromRGB(255, 90, 90)):ToHex(), v_u_67)
+        if not v107 then
+            local v108 = v_u_67
+            v107 = tostring(v108)
+        end
+        local v109 = v_u_80
+        local v110 = string.format
+        local v111 = "%s<font size=\"%d\" color=\"#%s\"> / %s</font>"
+        local v112 = v_u_80:GetAttribute("ReserveSize") or 24
+        local v113 = (v_u_80:GetAttribute("ReserveColor") or Color3.fromRGB(160, 160, 160)):ToHex()
+        local v114
+        if v_u_34.InfiniteAmmo == true then
+            v114 = true
+        elseif v_u_44 == nil then
+            v114 = false
+        else
+            v114 = v_u_44:GetAttribute("InFarmZone") == true
+        end
+        local v115
+        if v114 then
+            v115 = "\226\136\158"
+        else
+            local v116 = v_u_65
+            v115 = tostring(v116)
+        end
+        v109.Text = v110(v111, v107, v112, v113, v115)
+        v_u_81.Text = v_u_70.Name
+    end
+end
+local v118 = v41:WaitForChild("Effets"):WaitForChild("KillFlash")
+v_u_13.KillFlash = v_u_13.KillFlash or {
+    ["In"] = v118:GetAttribute("In") or 0.05,
+    ["Out"] = v118:GetAttribute("Out") or 0.53,
+    ["Brightness"] = v118.Brightness,
+    ["Contrast"] = v118.Contrast,
+    ["Saturation"] = v118.Saturation,
+    ["Tint"] = v118.TintColor
+}
+local v_u_119 = v118:Clone()
+v_u_119.Enabled = false
+local v120 = Color3.new(1, 1, 1)
+v_u_119.Brightness = 0
+v_u_119.Contrast = 0
+v_u_119.Saturation = 0
+v_u_119.TintColor = v120
+v_u_119.Parent = game:GetService("Lighting")
+local v_u_121 = 0
+local function v_u_126() -- name: flashKill
+    -- upvalues: (ref) v_u_121, (copy) v_u_13, (copy) v_u_119, (copy) v_u_8
+    v_u_121 = v_u_121 + 1
+    local v_u_122 = v_u_121
+    local v_u_123 = v_u_13.KillFlash
+    v_u_119.Enabled = true
+    local v124 = v_u_8:Create(v_u_119, TweenInfo.new(v_u_123.In, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        ["Brightness"] = v_u_123.Brightness,
+        ["Contrast"] = v_u_123.Contrast,
+        ["Saturation"] = v_u_123.Saturation,
+        ["TintColor"] = v_u_123.Tint
+    })
+    v124.Completed:Connect(function()
+        -- upvalues: (copy) v_u_122, (ref) v_u_121, (ref) v_u_8, (ref) v_u_119, (copy) v_u_123
+        if v_u_122 == v_u_121 then
+            local v125 = v_u_8:Create(v_u_119, TweenInfo.new(v_u_123.Out, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                ["Brightness"] = 0,
+                ["Contrast"] = 0,
+                ["Saturation"] = 0,
+                ["TintColor"] = nil,
+                ["TintColor"] = Color3.new(1, 1, 1)
+            })
+            v125.Completed:Connect(function()
+                -- upvalues: (ref) v_u_122, (ref) v_u_121, (ref) v_u_119
+                if v_u_122 == v_u_121 then
+                    v_u_119.Enabled = false
+                end
+            end)
+            v125:Play()
+        end
+    end)
+    v124:Play()
+end
+v_u_13.FlashKill = v_u_126
+local function v_u_132(p127) -- name: showHitmarker
+    -- upvalues: (copy) v_u_13, (copy) v_u_42, (copy) v_u_46, (copy) v_u_8, (copy) v_u_77, (copy) v_u_47, (ref) v_u_74, (copy) v_u_43, (copy) v_u_78, (copy) v_u_126
+    if v_u_13.HitmarkerOn ~= false then
+        local v128 = p127.Killed and v_u_42:GetAttribute("KillColor") or p127.Headshot and v_u_42:GetAttribute("HeadshotColor") or (v_u_42:GetAttribute("HitColor") or Color3.new(1, 1, 1))
+        for v129, v130 in v_u_46 do
+            v130.BackgroundColor3 = v128
+            v130.BackgroundTransparency = 0
+            v_u_8:Create(v130, v_u_77, {
+                ["BackgroundTransparency"] = 1
+            }):Play()
+            if not v_u_47[v129] then
+                continue
+            end
+            v_u_47[v129].Transparency = v_u_74
+            v_u_8:Create(v_u_47[v129], v_u_77, {
+                ["Transparency"] = 1
+            }):Play()
+        end
+        local v131 = v_u_13.HitmarkerScale or 1
+        v_u_43.Scale = (p127.Killed and 1.6 or 1.3) * v131
+        v_u_8:Create(v_u_43, v_u_78, {
+            ["Scale"] = (p127.Killed and 1.2 or 1) * v131
+        }):Play()
+    end
+    if p127.Downed or p127.Killed and p127.Downable == false then
+        v_u_126()
+    end
+end
+v_u_13.ShowHitmarker = v_u_132
+local function v145(p133) -- name: onServerHit
+    -- upvalues: (copy) v_u_20, (copy) v_u_17, (copy) v_u_32, (copy) v_u_132, (copy) v_u_126
+    if workspace:GetAttribute("DebugHits") then
+        local v134 = print
+        local v135 = p133.Headshot
+        local v136 = tostring(v135)
+        local v137 = p133.Killed
+        local v138 = tostring(v137)
+        local v139 = p133.Damage
+        v134(("[SERVEUR] t\195\170te=%s tue=%s d\195\169g\195\162ts=%s"):format(v136, v138, (tostring(v139))))
+    end
+    if p133.Friendly then
+        v_u_20.Play("Flesh")
+        local v140 = p133.Target
+        if typeof(v140) == "Instance" then
+            local v141 = p133.HitPos
+            if typeof(v141) == "Vector3" then
+                v_u_17.Blood(p133.Target, p133.HitPos, p133.HitPos - v_u_32.CFrame.Position)
+            end
+        end
+        return
+    else
+        v_u_20.OnConfirm(p133)
+        local v142 = p133.Target
+        if typeof(v142) == "Instance" then
+            local v143 = p133.HitPos
+            if typeof(v143) == "Vector3" then
+                v_u_17.Blood(p133.Target, p133.HitPos, p133.HitPos - v_u_32.CFrame.Position)
+            end
+        end
+        local v144 = os.clock()
+        if v144 - -1 > 0.35 then
+            v_u_132(p133)
+        else
+            if p133.Killed and (v144 - -1 > 0.5 and p133.Downable == false) then
+                v_u_126()
+            end
+            if p133.Downed and v144 - -1 > 0.5 then
+                v_u_126()
+            end
+        end
+    end
+end
+v_u_13.ConfirmHit = v145
+local function v_u_151() -- name: currentSpread
+    -- upvalues: (copy) v_u_13, (ref) v_u_70, (ref) v_u_49, (ref) v_u_53, (ref) v_u_56, (copy) v_u_34
+    local v146 = (v_u_13.Aiming and v_u_70.Bloom.Aim or v_u_70.Bloom.Hip) + v_u_49
+    local v147 = v_u_53.AssemblyLinearVelocity
+    local v148 = v147.X
+    local v149 = v147.Z
+    if Vector3.new(v148, 0, v149).Magnitude > 2 then
+        v146 = v146 + v_u_70.Bloom.Move * (v_u_13.Aiming and 0.4 or 1)
+    end
+    if v_u_56.FloorMaterial == Enum.Material.Air and not v_u_56.SeatPart then
+        v146 = v146 + v_u_70.Bloom.Air
+    end
+    local v150 = v_u_70.Bloom.Max
+    return math.min(v146, v150) * (v_u_13.SpreadMultiplier or 1) * (v_u_34.BloomScale or 1)
+end
+local v_u_152 = setmetatable({}, {
+    ["__mode"] = "k"
+})
+local function v_u_158(p153, p154) -- name: curveAt
+    if p154 <= p153[1][1] then
+        return p153[1][2]
+    end
+    for v155 = 2, #p153 do
+        local v156 = p153[v155 - 1]
+        local v157 = p153[v155]
+        if p154 > v157[1] then
+            continue
+        end
+        return v156[2] + (v157[2] - v156[2]) * (p154 - v156[1]) / (v157[1] - v156[1])
+    end
+    return p153[#p153][2]
+end
+local function v_u_186(p159, p160) -- name: predictHit
+    -- upvalues: (ref) v_u_44, (copy) v_u_152, (ref) v_u_70, (copy) v_u_158, (copy) v_u_34, (copy) v_u_18, (copy) v_u_3
+    local v161 = p159.char
+    local v162
+    if v161 then
+        v162 = v161:FindFirstChildOfClass("Humanoid")
+    else
+        v162 = v161
+    end
+    if v162 and (v161 ~= v_u_44 and v162.Health > 0) then
+        local v163 = os.clock()
+        local v164 = v_u_152[v162]
+        local v165 = v162.Health
+        if v164 and v163 - v164.t < 0.5 then
+            local v166 = v164.h
+            v165 = math.min(v165, v166)
+        end
+        if v165 <= 0 then
+            return
+        else
+            local v167 = 1
+            local v168
+            if v_u_70.Damage.Curve then
+                v168 = v_u_158(v_u_70.Damage.Curve, p160)
+            else
+                v168 = v_u_70.Damage.FalloffStart < p160 and (v_u_34.FarDamageScale or 0.9) or v167
+            end
+            local v169 = v_u_18.HEAD[p159.name] == true
+            local v170 = v169 and v_u_70.Damage.Headshot or 1
+            local v171 = v_u_70.Damage.Base * v168 * v170 + 0.5
+            local v172 = math.floor(v171)
+            if v_u_70.Damage.BodyNoKillChance and not v169 then
+                local v173 = v_u_70.Damage.BodyNoKill
+                v172 = math.min(v172, v173)
+            end
+            local v174 = v165 - v172
+            local v175 = v174 <= 0
+            local v176 = v_u_3:GetPlayerFromCharacter(v161)
+            local v177 = v176 ~= nil and true or v161:GetAttribute("Downable") == true
+            local v178
+            if v161:GetAttribute("Downed") == true then
+                v178 = true
+            elseif v164 == nil or v163 - v164.t >= 0.5 then
+                v178 = false
+            else
+                v178 = v164.downed == true
+            end
+            local v179 = v161:GetAttribute("DownedAt")
+            local v180 = v161:GetAttribute("DownedGrace") or 0.7
+            local v181
+            if v179 and workspace:GetServerTimeNow() - v179 < v180 then
+                v181 = true
+            elseif v164 == nil or v164.downedT == nil then
+                v181 = false
+            else
+                v181 = v163 - v164.downedT < v180
+            end
+            local v182 = false
+            local v183
+            if v164 then
+                v183 = v164.downedT
+            else
+                v183 = v164
+            end
+            if v178 and v181 then
+                local v184 = v_u_152
+                local v185 = {
+                    ["h"] = nil,
+                    ["t"] = nil,
+                    ["downed"] = true,
+                    ["downedT"] = nil,
+                    ["h"] = v174 + v172,
+                    ["t"] = v163
+                }
+                if v164 then
+                    v164 = v164.downedT
+                end
+                v185.downedT = v164
+                v184[v162] = v185
+            else
+                if v175 and (v177 and not v178) then
+                    v183 = v163
+                    v182 = true
+                    v174 = 1
+                    v178 = true
+                    v175 = false
+                end
+                v_u_152[v162] = {
+                    ["h"] = v174,
+                    ["t"] = v163,
+                    ["downed"] = v178,
+                    ["downedT"] = v183
+                }
+                ({
+                    ["Headshot"] = v169,
+                    ["Killed"] = v175,
+                    ["Downed"] = v182,
+                    ["Downable"] = v177
+                }).Victim = v176 and v176.DisplayName or v161.Name
+                if workspace:GetAttribute("DebugHits") then
+                    print(("[PR\195\137DIT] %s t\195\170te=%s tue=%s vie pr\195\169vue=%.0f"):format(p159.name, tostring(v169), tostring(v175), v174))
+                end
+            end
+        end
+    else
+        return
+    end
+end
+local v_u_187 = nil
+local function v_u_201() -- name: startShellReload
+    -- upvalues: (ref) v_u_70, (ref) v_u_50, (copy) v_u_13, (copy) v_u_22, (copy) v_u_21, (ref) v_u_63, (ref) v_u_57, (ref) v_u_67, (copy) v_u_30, (copy) v_u_28, (ref) v_u_187, (copy) v_u_82, (copy) v_u_17, (ref) v_u_62, (ref) v_u_65, (copy) v_u_34, (ref) v_u_44, (copy) v_u_117
+    local v_u_188 = v_u_70.Ammo.Shell
+    local v_u_189 = v_u_50
+    v_u_13.Reloading = true
+    v_u_13.ReloadStart = os.clock()
+    v_u_22.Cancel(v_u_50)
+    v_u_21.StopBolt(v_u_50)
+    v_u_63 = 0
+    v_u_57 = v_u_57 + 1
+    local v_u_190 = v_u_57
+    local v_u_191 = v_u_67 <= 0
+    local v_u_192 = 0
+    v_u_30.Out(v_u_28.Reload.FireServer, v_u_28.Reload)
+    local v_u_193 = os.clock()
+    local function v_u_195(p194) -- name: finish
+        -- upvalues: (copy) v_u_190, (ref) v_u_57, (ref) v_u_50, (copy) v_u_189, (ref) v_u_187, (ref) v_u_13, (ref) v_u_82, (ref) v_u_30, (ref) v_u_28, (copy) v_u_191, (ref) v_u_192, (ref) v_u_22, (ref) v_u_21, (ref) v_u_17, (ref) v_u_63, (ref) v_u_70, (copy) v_u_188
+        if v_u_190 == v_u_57 and v_u_50 == v_u_189 then
+            v_u_57 = v_u_57 + 1
+            v_u_187 = nil
+            v_u_13.Reloading = false
+            v_u_82.Visible = false
+            v_u_30.Out(v_u_28.Reload.FireServer, v_u_28.Reload, "done")
+            if v_u_191 and v_u_192 > 0 then
+                v_u_22.Start(v_u_189)
+                v_u_21.Bolt(v_u_189, v_u_189:FindFirstChild("Handle"), true, v_u_17.IsSilenced(v_u_189), true)
+                v_u_63 = os.clock() + v_u_70.Fire.BoltTime
+                v_u_189:SetAttribute("BoltReadyAt", v_u_63)
+            elseif p194 then
+                v_u_63 = os.clock() + (v_u_188.Interrupt or 0.15)
+            end
+        else
+            return
+        end
+    end
+    v_u_187 = function()
+        -- upvalues: (copy) v_u_195
+        v_u_195(true)
+    end
+    task.spawn(function()
+        -- upvalues: (ref) v_u_67, (ref) v_u_62, (ref) v_u_65, (ref) v_u_34, (ref) v_u_44, (copy) v_u_193, (copy) v_u_188, (copy) v_u_190, (ref) v_u_57, (ref) v_u_50, (copy) v_u_189, (ref) v_u_21, (ref) v_u_192, (ref) v_u_30, (ref) v_u_28, (ref) v_u_117, (copy) v_u_195
+        local v196 = 0
+        while v_u_67 < v_u_62 do
+            if v_u_65 <= 0 then
+                local v197
+                if v_u_34.InfiniteAmmo == true then
+                    v197 = true
+                elseif v_u_44 == nil then
+                    v197 = false
+                else
+                    v197 = v_u_44:GetAttribute("InFarmZone") == true
+                end
+                if not v197 then
+                    break
+                end
+            end
+            local v198 = task.wait
+            local v199 = v_u_193 + v_u_188.Start + (v196 + v_u_188.InsertAt) * v_u_188.Each - os.clock()
+            v198((math.max(0, v199)))
+            if v_u_190 ~= v_u_57 or v_u_50 ~= v_u_189 then
+                return
+            end
+            v_u_21.Shell(v_u_189)
+            v_u_67 = v_u_67 + 1
+            local v200
+            if v_u_34.InfiniteAmmo == true then
+                v200 = true
+            elseif v_u_44 == nil then
+                v200 = false
+            else
+                v200 = v_u_44:GetAttribute("InFarmZone") == true
+            end
+            if not v200 then
+                v_u_65 = v_u_65 - 1
+            end
+            v_u_192 = v_u_192 + 1
+            v196 = v196 + 1
+            v_u_30.Out(v_u_28.Reload.FireServer, v_u_28.Reload, "shell")
+            v_u_117()
+        end
+        task.wait(v_u_188.End or 0.25)
+        v_u_195(false)
+    end)
+end
+local function v_u_213() -- name: startReload
+    -- upvalues: (ref) v_u_50, (copy) v_u_13, (ref) v_u_67, (ref) v_u_62, (ref) v_u_65, (copy) v_u_34, (ref) v_u_44, (ref) v_u_70, (copy) v_u_201, (copy) v_u_22, (copy) v_u_21, (ref) v_u_63, (ref) v_u_57, (copy) v_u_30, (copy) v_u_28, (copy) v_u_82, (copy) v_u_117
+    if v_u_50 and (not v_u_13.Reloading and v_u_62 > v_u_67) then
+        if v_u_65 <= 0 then
+            local v202
+            if v_u_34.InfiniteAmmo == true then
+                v202 = true
+            elseif v_u_44 == nil then
+                v202 = false
+            else
+                v202 = v_u_44:GetAttribute("InFarmZone") == true
+            end
+            if not v202 then
+                return
+            end
+        end
+        if v_u_70.Ammo.Shell then
+            v_u_201()
+        else
+            v_u_13.Reloading = true
+            v_u_13.ReloadStart = os.clock()
+            v_u_22.Cancel(v_u_50)
+            v_u_21.StopBolt(v_u_50)
+            v_u_63 = 0
+            v_u_57 = v_u_57 + 1
+            local v_u_203 = v_u_57
+            v_u_30.Out(v_u_28.Reload.FireServer, v_u_28.Reload)
+            local v204 = v_u_50:GetAttribute("ReloadTime") or v_u_70.Ammo.ReloadTime
+            local v205 = not v_u_21.Reload(v_u_50, v204) and v_u_50.Handle:FindFirstChild("Reload")
+            if v205 then
+                if v205:GetAttribute("BaseSpeed") == nil then
+                    v205:SetAttribute("BaseSpeed", v205.PlaybackSpeed)
+                end
+                v205.PlaybackSpeed = v205:GetAttribute("BaseSpeed") * v_u_70.Ammo.ReloadTime / v204
+                v205:Play()
+            end
+            task.delay(v204, function()
+                -- upvalues: (copy) v_u_203, (ref) v_u_57, (ref) v_u_50, (ref) v_u_34, (ref) v_u_44, (ref) v_u_62, (ref) v_u_67, (ref) v_u_65, (ref) v_u_70, (ref) v_u_13, (ref) v_u_82, (ref) v_u_117
+                if v_u_203 == v_u_57 and v_u_50 then
+                    local v206 = 0
+                    local v207
+                    if v_u_34.InfiniteAmmo == true then
+                        v207 = true
+                    elseif v_u_44 == nil then
+                        v207 = false
+                    else
+                        v207 = v_u_44:GetAttribute("InFarmZone") == true
+                    end
+                    local v208 = v207 and v_u_62 - v_u_67
+                    if not v208 then
+                        local v209 = v_u_62 - v_u_67
+                        local v210 = v_u_65
+                        v208 = math.min(v209, v210)
+                    end
+                    local v211 = math.max(v206, v208)
+                    v_u_67 = v_u_67 + v211
+                    local v212
+                    if v_u_34.InfiniteAmmo == true then
+                        v212 = true
+                    elseif v_u_44 == nil then
+                        v212 = false
+                    else
+                        v212 = v_u_44:GetAttribute("InFarmZone") == true
+                    end
+                    if not v212 then
+                        v_u_65 = v_u_65 - v211
+                    end
+                    if v_u_70.Fire.Mode == "Rocket" then
+                        v_u_50:SetAttribute("Ammo", v_u_67)
+                    end
+                    v_u_13.Reloading = false
+                    v_u_82.Visible = false
+                    v_u_117()
+                end
+            end)
+        end
+    else
+        return
+    end
+end
+function v_u_13.CanReload()
+    -- upvalues: (ref) v_u_50, (copy) v_u_13, (ref) v_u_62, (ref) v_u_67, (copy) v_u_34, (ref) v_u_44, (ref) v_u_65
+    local v214 = v_u_50 ~= nil and not v_u_13.Reloading
+    if v214 then
+        local v215 = v_u_62
+        if type(v215) == "number" then
+            local v216 = v_u_67
+            if type(v216) == "number" and v_u_67 < v_u_62 then
+                if v_u_34.InfiniteAmmo == true then
+                    v214 = true
+                elseif v_u_44 == nil then
+                    v214 = false
+                else
+                    v214 = v_u_44:GetAttribute("InFarmZone") == true
+                end
+                if not v214 then
+                    local v217 = v_u_65
+                    if type(v217) == "number" then
+                        v214 = v_u_65 > 0
+                    else
+                        v214 = false
+                    end
+                end
+            else
+                v214 = false
+            end
+        else
+            v214 = false
+        end
+    end
+    return v214
+end
+local function v_u_223(p218, p219) -- name: bloomDir
+    -- upvalues: (copy) v_u_35
+    if p219 <= 0 then
+        return p218
+    end
+    local v220 = p219 * v_u_35:NextNumber()
+    local v221 = math.rad(v220)
+    local v222 = v_u_35:NextNumber() * 3.141592653589793 * 2
+    return (CFrame.lookAt(Vector3.new(0, 0, 0), p218) * CFrame.Angles(0, 0, v222) * CFrame.Angles(v221, 0, 0)).LookVector
+end
+local v_u_224 = game:GetService("CollectionService")
+local v_u_225 = require(game:GetService("ReplicatedStorage"):WaitForChild("VehicleSystem"):WaitForChild("Config"))
+local v_u_226 = RaycastParams.new()
+v_u_226.FilterType = Enum.RaycastFilterType.Include
+v_u_226.CollisionGroup = "Bullet"
+local function v_u_229(p227) -- name: vehicleOfPart
+    -- upvalues: (copy) v_u_224
+    local v228 = p227:FindFirstAncestorWhichIsA("Model")
+    while v228 and not v_u_224:HasTag(v228, "Vehicle") do
+        v228 = v228:FindFirstAncestorWhichIsA("Model")
+    end
+    return v228
+end
+local v_u_230 = {
+    ["Head"] = true,
+    ["UpperTorso"] = true,
+    ["LeftUpperArm"] = true,
+    ["LeftLowerArm"] = true,
+    ["LeftHand"] = true,
+    ["RightUpperArm"] = true,
+    ["RightLowerArm"] = true,
+    ["RightHand"] = true
+}
+local function v_u_247(p231, p232, p233) -- name: throughBody
+    -- upvalues: (copy) v_u_229, (copy) v_u_13, (copy) v_u_225, (copy) v_u_19, (copy) v_u_230, (copy) v_u_226, (copy) v_u_24
+    if p231 then
+        local v234 = p231.Instance
+        if typeof(v234) == "Instance" then
+            local v235 = v_u_229(p231.Instance)
+            local v236 = v_u_13.Vehicle
+            if v236 then
+                v236 = v_u_13.Vehicle.Model
+            end
+            if not v235 or v235 == v236 then
+                return nil
+            end
+            local v237 = v_u_225.Get(v235:GetAttribute("VehicleConfig"))
+            if v237 and v237.BulletProof then
+                return nil
+            end
+            local v238 = {}
+            for _, v239 in v235:GetDescendants() do
+                if not ((v239:IsA("Seat") or v239:IsA("VehicleSeat")) and (v239.Occupant and v239.Occupant.Parent)) then
+                    continue
+                end
+                local v240 = v_u_19.folders[v239.Occupant.Parent]
+                if not v240 then
+                    continue
+                end
+                for _, v241 in v240:GetChildren() do
+                    if not v_u_230[v241.Name] then
+                        continue
+                    end
+                    table.insert(v238, v241)
+                end
+            end
+            if #v238 == 0 then
+                return nil
+            end
+            v_u_226.FilterDescendantsInstances = v238
+            local v242 = p233.Unit
+            local v243 = p231.Position
+            if p231.Instance.Name:sub(1, 6) == "Armor_" then
+                local _, v244 = v_u_24.Find(p231.Instance, p231.Position, v242)
+                v243 = v244 or v243
+            end
+            local v245 = v243 - v242 * 0.05
+            local v246 = workspace:Raycast(v245, v242 * 2.25, v_u_226)
+            return v246 and {
+                ["Instance"] = v246.Instance,
+                ["Position"] = v246.Position,
+                ["Normal"] = v246.Normal,
+                ["Material"] = v246.Material,
+                ["Distance"] = (v246.Position - p232).Magnitude
+            } or nil
+        end
+    end
+    return nil
+end
+local function v_u_267(p_u_248, p_u_249, p_u_250) -- name: castVisible
+    -- upvalues: (copy) v_u_24, (copy) v_u_13, (copy) v_u_247
+    local v251 = p_u_250.FilterDescendantsInstances
+    local v_u_252 = table.clone(v251)
+    local function v256() -- name: cast
+        -- upvalues: (copy) p_u_250, (copy) v_u_252, (copy) p_u_248, (copy) p_u_249
+        p_u_250.FilterDescendantsInstances = v_u_252
+        local v253 = workspace:Raycast(p_u_248, p_u_249, p_u_250)
+        for _ = 1, 12 do
+            if not v253 or v253.Instance.Name:sub(1, 6) ~= "Glass_" then
+                break
+            end
+            local v254 = v_u_252
+            local v255 = v253.Instance
+            table.insert(v254, v255)
+            p_u_250.FilterDescendantsInstances = v_u_252
+            v253 = workspace:Raycast(p_u_248, p_u_249, p_u_250)
+        end
+        return v253
+    end
+    local v257 = v256()
+    for _ = 1, 16 do
+        if not v257 or v257.Instance.Name:sub(1, 6) ~= "Armor_" then
+            break
+        end
+        local v258 = v257.Instance
+        table.insert(v_u_252, v258)
+        local v259 = v256()
+        local v260 = v259 and (v259.Position - v257.Position).Magnitude or p_u_249.Magnitude
+        if v_u_24.Covers(v257.Instance, v257.Position, p_u_249, v260) ~= false then
+            break
+        end
+        v257 = v259
+    end
+    p_u_250.FilterDescendantsInstances = v251
+    local v261 = v257 and (v257.Position - p_u_248).Magnitude or p_u_249.Magnitude
+    local v262 = v_u_13.Vehicle
+    if v262 then
+        v262 = v_u_13.Vehicle.Model
+    end
+    local v263, v264, v265, v266 = v_u_24.Raycast(p_u_248, p_u_249, v261, v262)
+    if v263 then
+        v257 = v265 < v261 - 0.05 and {
+            ["Instance"] = v264,
+            ["Position"] = v263,
+            ["Normal"] = v266,
+            ["Distance"] = v265
+        } or v257
+    end
+    return v_u_247(v257, p_u_248, p_u_249) or v257
+end
+local v_u_268 = RaycastParams.new()
+v_u_268.IgnoreWater = true
+v_u_268.FilterType = Enum.RaycastFilterType.Exclude
+v_u_268.CollisionGroup = "Bullet"
+local function v_u_279(p269, p270, p271, p272) -- name: glassAlong
+    -- upvalues: (copy) v_u_268
+    local v273 = table.clone(p272)
+    local v274 = {}
+    local v275 = nil
+    for _ = 1, 16 do
+        v_u_268.FilterDescendantsInstances = v273
+        local v276 = workspace:Raycast(p269, p270 * p271, v_u_268)
+        if not v276 then
+            break
+        end
+        if v276.Instance.Name:sub(1, 6) == "Glass_" then
+            local v277 = v276.Instance
+            table.insert(v274, v277)
+            v275 = v275 or v276.Position
+        end
+        local v278 = v276.Instance
+        table.insert(v273, v278)
+    end
+    return v274, v275
+end
+local v_u_280 = setmetatable({}, {
+    ["__mode"] = "k"
+})
+local function v_u_290(p281, p282, p283, p284, p285) -- name: firstIntactGlass
+    -- upvalues: (copy) v_u_268, (copy) v_u_280, (copy) v_u_229
+    local v286 = table.clone(p284)
+    for _ = 1, 16 do
+        v_u_268.FilterDescendantsInstances = v286
+        local v287 = workspace:Raycast(p281, p282 * p283, v_u_268)
+        if not v287 then
+            return nil
+        end
+        local v288 = v287.Instance
+        if v288.Name:sub(1, 6) == "Glass_" and (v288.Transparency < 1 and (v288:IsDescendantOf(p285) and (not v_u_280[v288] or os.clock() - v_u_280[v288] >= 2))) then
+            local v289 = v_u_229(v288)
+            if v289 and not (v289:GetAttribute("Destroyed") or v289:GetAttribute("Noyee")) then
+                return v287
+            end
+        end
+        table.insert(v286, v288)
+    end
+    return nil
+end
+local v_u_291 = 0
+local function v_u_305(p292, p293) -- name: pelletDirs
+    -- upvalues: (ref) v_u_70, (copy) v_u_35
+    local v294 = v_u_70 and v_u_70.Fire
+    if v294 then
+        v294 = v_u_70.Fire.Pellets
+    end
+    if not v294 then
+        return { p292 }
+    end
+    local v295 = CFrame.lookAt(Vector3.new(0, 0, 0), p292)
+    local v296 = {}
+    for v297, v298 in v294.Pattern do
+        local v299 = v298 + (v297 == 1 and p293 and Vector2.zero or Vector2.new(v_u_35:NextNumber(-1, 1), v_u_35:NextNumber(-1, 1)) * (v294.Jitter or 0))
+        local v300 = CFrame.Angles
+        local v301 = v299.Y
+        local v302 = math.rad(v301)
+        local v303 = v299.X
+        local v304 = (v295 * v300(v302, -math.rad(v303), 0)).LookVector
+        table.insert(v296, v304)
+    end
+    return v296
+end
+local function v_u_437(p306) -- name: fire
+    -- upvalues: (ref) v_u_70, (copy) v_u_19, (ref) v_u_68, (ref) v_u_58, (ref) v_u_54, (copy) v_u_34, (copy) v_u_13, (ref) v_u_67, (copy) v_u_29, (copy) v_u_151, (ref) v_u_53, (ref) v_u_49, (ref) v_u_56, (copy) v_u_32, (copy) v_u_7, (ref) v_u_44, (copy) v_u_223, (copy) v_u_33, (copy) v_u_40, (copy) v_u_267, (copy) v_u_1, (copy) v_u_279, (ref) v_u_50, (ref) v_u_291, (ref) v_u_37, (copy) v_u_30, (copy) v_u_28, (copy) v_u_23, (copy) v_u_31, (ref) v_u_38, (copy) v_u_35, (copy) v_u_117, (copy) v_u_213, (copy) v_u_24, (copy) v_u_290, (copy) v_u_17, (copy) v_u_280, (copy) v_u_186, (copy) v_u_305, (ref) v_u_63, (copy) v_u_21
+    if v_u_70 and v_u_70.Fire then
+        if v_u_19.Refresh then
+            v_u_19.Refresh()
+        end
+        local v307 = 60 / v_u_70.Fire.RPM
+        local v308
+        if p306 - v_u_68 < v307 + 0.03333333333333333 then
+            v308 = v_u_68 + v307 or p306
+        else
+            v308 = p306
+        end
+        v_u_68 = v308
+        v_u_58 = p306 + (v_u_54 and v_u_34.CombatLinger or 0.2)
+        v_u_13.LastShot = p306
+        v_u_67 = v_u_67 - 1
+        v_u_29.RumbleShot(v_u_70.Fire)
+        local v309 = v_u_151()
+        local v310 = v_u_53.AssemblyLinearVelocity
+        local v311
+        if v_u_49 < 0.05 then
+            local v312 = v310.X
+            local v313 = v310.Z
+            if Vector3.new(v312, 0, v313).Magnitude < 2 then
+                v311 = v_u_56.FloorMaterial ~= Enum.Material.Air and true or v_u_56.SeatPart ~= nil
+            else
+                v311 = false
+            end
+        else
+            v311 = false
+        end
+        local v314 = v_u_49 + v_u_70.Bloom.PerShot
+        local v315 = v_u_70.Bloom.Max
+        v_u_49 = math.min(v314, v315)
+        local v316 = v_u_32.ViewportSize
+        local v_u_317 = v_u_32:ViewportPointToRay(v316.X / 2, v316.Y / 2)
+        local v_u_318 = v_u_317
+        local v319 = v_u_7 and v_u_13.ShotRedirect or nil
+        if v319 then
+            local v320 = v_u_317.Origin
+            local v321 = v_u_317.Direction.Unit
+            local v322, v323 = pcall(v319, v320, v321)
+            if v322 and (typeof(v323) == "Vector3" and v323.Magnitude > 0.5) then
+                v_u_317 = Ray.new(v_u_317.Origin, v323.Unit)
+            end
+        end
+        local v_u_324 = v_u_44:FindFirstChild("Head")
+        local v_u_325 = v_u_324 and v_u_324.Position or v_u_53.Position + Vector3.new(0, 1.5, 0)
+        local v326 = v311 and v_u_317.Direction.Unit or v_u_223(v_u_317.Direction.Unit, v309)
+        local function v432(p327, p328) -- name: shoot
+            -- upvalues: (ref) v_u_317, (ref) v_u_325, (ref) v_u_13, (ref) v_u_19, (ref) v_u_44, (ref) v_u_33, (ref) v_u_40, (ref) v_u_267, (ref) v_u_70, (ref) v_u_1, (ref) v_u_279, (ref) v_u_50, (ref) v_u_291, (ref) v_u_37, (ref) v_u_30, (ref) v_u_28, (copy) v_u_318, (ref) v_u_23, (ref) v_u_31, (ref) v_u_67, (ref) v_u_38, (ref) v_u_35, (ref) v_u_117, (ref) v_u_213, (ref) v_u_56, (copy) v_u_324, (ref) v_u_24, (ref) v_u_290, (ref) v_u_17, (ref) v_u_280, (ref) v_u_186
+            local v329 = v_u_317.Origin
+            local v330 = v_u_325 - v_u_317.Origin
+            local v331 = v329 + p327 * math.max(0, v330:Dot(p327))
+            if v_u_13.Scoped then
+                v_u_325 = v331
+            end
+            local v332 = v_u_19.folders[v_u_44]
+            local v333 = v_u_13.Vehicle and v_u_13.Vehicle.Model or nil
+            local v334 = v_u_13.Carrying
+            local v335
+            if typeof(v334) == "Instance" then
+                v335 = v_u_13.Carrying or nil
+            else
+                v335 = nil
+            end
+            local v336
+            if v335 then
+                v336 = v_u_19.folders[v335] or nil
+            else
+                v336 = nil
+            end
+            local v337 = {}
+            for _, v338 in {
+                v_u_44,
+                v_u_33,
+                v332 or false,
+                v333 or false,
+                v336 or false,
+                v335 or false
+            } do
+                if not v338 then
+                    continue
+                end
+                table.insert(v337, v338)
+            end
+            if v333 then
+                for _, v339 in v333:GetDescendants() do
+                    local v340 = (v339:IsA("Seat") or v339:IsA("VehicleSeat")) and v339.Occupant
+                    if v340 then
+                        v340 = v339.Occupant.Parent
+                    end
+                    if not v340 or v340 == v_u_44 then
+                        continue
+                    end
+                    table.insert(v337, v340)
+                    if not v_u_19.folders[v340] then
+                        continue
+                    end
+                    local v341 = v_u_19.folders[v340]
+                    table.insert(v337, v341)
+                end
+            end
+            v_u_40.FilterDescendantsInstances = table.clone(v337)
+            local v342 = v_u_267(v331, p327 * v_u_70.Damage.Range, v_u_40)
+            local v343 = v342 and v342.Position or v331 + p327 * v_u_70.Damage.Range
+            if v_u_1.Find("Cars") then
+                local _, v344 = v_u_279(v331, p327, (v343 - v331).Magnitude, table.clone(v337))
+                v343 = v344 or v343
+            end
+            if v_u_70.Fire.Mode == "Rocket" then
+                local v345 = v_u_50:FindFirstChild("Handle")
+                if v345 then
+                    v345 = v_u_50.Handle:FindFirstChild("Muzzle")
+                end
+                local v346 = v345 and v345.WorldPosition or v_u_325
+                local v347 = v343 - v346
+                if v347.Magnitude > 1 then
+                    p327 = v347.Unit or p327
+                end
+                v_u_291 = v_u_291 + 1
+                v_u_37 = v_u_37 + 1
+                local v348 = v_u_291
+                v_u_30.Out(v_u_28.Fire.FireServer, v_u_28.Fire, v346, p327, tostring(v348), nil, nil, nil, nil, nil, nil, v_u_37, v_u_318.Origin, v_u_318.Direction.Unit, v343)
+                v_u_23.Launch(v_u_31.UserId .. ":" .. v_u_291, v_u_44, v346, p327, v_u_70.Fire.Rocket, v_u_70.RocketSounds)
+                v_u_50:SetAttribute("Ammo", v_u_67)
+                v_u_50:SetAttribute("ShotFX", os.clock())
+                local v349 = v_u_13.Aiming and v_u_70.Recoil.AimScale or 1
+                v_u_38 = v_u_38 + Vector2.new(v_u_70.Recoil.Up * v349 * v_u_35:NextNumber(0.85, 1.15), v_u_70.Recoil.Side * v349 * v_u_35:NextNumber(-1, 1))
+                v_u_117()
+                if v_u_67 <= 0 then
+                    task.delay(0.35, v_u_213)
+                end
+                return "rocket"
+            end
+            local v350 = false
+            if v_u_56.SeatPart and (not v_u_13.Scoped and v_u_324) then
+                local v351 = v_u_324.Position
+                local v352 = v331 - v351
+                local v353 = v352.X
+                local v354 = v352.Y - 2.9
+                local v355 = math.max(0, v354)
+                local v356 = v352.Z
+                local v357
+                if Vector3.new(v353, v355, v356).Magnitude > 2.4 then
+                    v357 = 0
+                    local v358 = 1
+                    for _ = 1, 12 do
+                        local v359 = (v357 + v358) / 2
+                        local v360 = v352 * v359
+                        local v361 = v360.X
+                        local v362 = v360.Y - 2.9
+                        local v363 = math.max(0, v362)
+                        local v364 = v360.Z
+                        if Vector3.new(v361, v363, v364).Magnitude > 2.4 then
+                            v358 = v359
+                        else
+                            v357 = v359
+                        end
+                    end
+                else
+                    v357 = 1
+                end
+                local v365 = v351 + v352 * v357
+                if (v365 - v351).Magnitude > 0.05 and not workspace:Raycast(v351, v365 - v351, v_u_40) then
+                    v_u_325 = v365
+                    v350 = true
+                end
+            end
+            local v366 = v343 - v_u_325
+            local v367
+            if v366.Magnitude > 0.01 then
+                v367 = v366.Unit or p327
+            else
+                v367 = p327
+            end
+            local v368
+            if v342 then
+                local v369 = v342.Instance
+                v368 = v_u_19.parts[v369]
+                if v368 then
+                    v368 = v368.char
+                end
+            else
+                v368 = v342
+            end
+            local v370 = table.clone(v337)
+            local v371 = v_u_267(v_u_325, v367 * v_u_70.Damage.Range, v_u_40)
+            local v372 = nil
+            for _ = 1, 4 do
+                local v373
+                if v371 then
+                    local v374 = v371.Instance
+                    v373 = v_u_19.parts[v374]
+                    if v373 then
+                        v373 = v373.char
+                    end
+                else
+                    v373 = v371
+                end
+                if not v373 or v373 == v368 then
+                    break
+                end
+                v372 = (v371.Position - v_u_325).Magnitude
+                local v375 = v_u_19.folders[v373]
+                table.insert(v370, v375)
+                v_u_40.FilterDescendantsInstances = v370
+                v371 = v_u_267(v_u_325, v367 * v_u_70.Damage.Range, v_u_40)
+            end
+            local v376 = v_u_50 and v_u_50:FindFirstChild("Handle")
+            if v376 then
+                v376 = v_u_50.Handle:FindFirstChild("Muzzle")
+            end
+            local v377
+            if v376 and not v350 then
+                local v378 = v376.WorldPosition
+                local v379 = v371 and ((v371.Position - v_u_325).Magnitude or (1 / 0)) or (1 / 0)
+                v_u_40.FilterDescendantsInstances = v370
+                v377 = v_u_267(v_u_325, v378 - v_u_325, v_u_40) or v_u_267(v378, v367 * 6, v_u_40)
+                if v377 then
+                    local v380 = v377.Instance
+                    local v381 = v_u_19.parts[v380]
+                    if v381 then
+                        v381 = v381.char
+                    end
+                    if v381 then
+                        v377 = v371
+                    elseif (v377.Position - v_u_325).Magnitude >= v379 - 0.05 then
+                        v377 = v371
+                    end
+                else
+                    v377 = v371
+                end
+            else
+                v377 = v371
+            end
+            local v382 = v377 and v377.Position or v_u_325 + v367 * v_u_70.Damage.Range
+            local v383 = v_u_1.Find("Cars")
+            local v384 = v377 and (v382 - v_u_325).Magnitude or v_u_70.Damage.Range
+            if v377 and v377.Instance.Name:sub(1, 6) == "Armor_" then
+                local _, v385 = v_u_24.Find(v377.Instance, v382, v367)
+                if v385 then
+                    v384 = (v385 - v_u_325).Magnitude
+                end
+            end
+            local v386 = v_u_70.Damage.PierceGlass == true
+            local v387 = {}
+            local v388
+            if v383 and not v386 then
+                v388 = v_u_290(v_u_325, v367, v384 + 0.05, v337, v383) or nil
+            else
+                v388 = nil
+            end
+            if v388 then
+                v382 = v388.Position
+                v387 = { v388.Instance }
+            else
+                v388 = v377
+            end
+            local v389
+            if v388 then
+                v389 = v_u_19.parts[v388.Instance]
+            else
+                v389 = v388
+            end
+            local v390
+            if v388 and (not v389 and (v383 and v388.Instance:IsDescendantOf(v383))) then
+                v390 = v388.Instance or nil
+            else
+                v390 = nil
+            end
+            local v391 = {}
+            local v392, v393, v394
+            if v389 and v_u_70.Damage.Collateral then
+                local v395 = table.clone(v370)
+                local v396 = v_u_19.folders[v389.char] or v388.Instance
+                table.insert(v395, v396)
+                local v397 = {
+                    [v389.char] = true
+                }
+                v392 = v_u_325 + v367 * v_u_70.Damage.Range
+                v393 = {}
+                local v398 = nil
+                for _ = 1, 30 do
+                    v_u_40.FilterDescendantsInstances = v395
+                    local v399 = v_u_267(v_u_325, v367 * v_u_70.Damage.Range, v_u_40)
+                    local v400
+                    if v399 then
+                        v400 = v_u_19.parts[v399.Instance]
+                    else
+                        v400 = v399
+                    end
+                    if not v400 then
+                        if v399 then
+                            v392 = v399.Position
+                            v398 = v399
+                        end
+                        break
+                    end
+                    if not v397[v400.char] then
+                        v397[v400.char] = true
+                        local v401 = { v400.char, v400.name, v399.Position }
+                        table.insert(v393, v401)
+                        local v402 = {
+                            ["box"] = v400,
+                            ["pos"] = v399.Position
+                        }
+                        table.insert(v391, v402)
+                    end
+                    local v403 = v_u_19.folders[v400.char] or v399.Instance
+                    table.insert(v395, v403)
+                end
+                v394 = v383 and not v386
+                if v394 then
+                    v394 = v_u_290(v_u_325, v367, (v392 - v_u_325).Magnitude + 0.05, v337, v383)
+                end
+                if v394 then
+                    local v404 = (v394.Position - v_u_325).Magnitude
+                    for v405 = #v393, 1, -1 do
+                        if v404 >= (v393[v405][3] - v_u_325).Magnitude then
+                            continue
+                        end
+                        table.remove(v393, v405)
+                        table.remove(v391, v405)
+                    end
+                    v392 = v394.Position
+                    v387 = { v394.Instance }
+                else
+                    v394 = v398
+                end
+                v_u_40.FilterDescendantsInstances = v370
+                if #v393 == 0 then
+                    v393 = nil
+                end
+            else
+                v392 = v382
+                v394 = v388
+                v393 = nil
+            end
+            if v386 and v383 then
+                local v406 = v_u_279
+                local v407 = v_u_325
+                local v408 = (v392 - v_u_325).Magnitude
+                v387 = {}
+                for _, v409 in v406(v407, v367, math.max(v384, v408) + 0.05, table.clone(v337)) do
+                    if not v409:IsDescendantOf(v383) then
+                        continue
+                    end
+                    table.insert(v387, v409)
+                end
+            end
+            if v_u_17.OnGlass then
+                for _, v410 in v387 do
+                    v_u_17.OnGlass(v410, v367)
+                end
+            end
+            for _, v411 in v387 do
+                v_u_280[v411] = os.clock()
+            end
+            v_u_13.ShotCount = (v_u_13.ShotCount or 0) + 1
+            v_u_37 = v_u_37 + 1
+            local v412 = v_u_30.Out
+            local v413 = v_u_28.Fire.FireServer
+            local v414 = v_u_28.Fire
+            local v415 = v_u_325
+            local v416
+            if v389 then
+                v416 = v389.char
+            else
+                v416 = v389
+            end
+            local v417
+            if v389 then
+                v417 = v389.name
+            else
+                v417 = v389
+            end
+            v412(v413, v414, v415, v367, v416, v417, v388 and v382, v390, v387, v393, p328, v_u_37, v_u_318.Origin, v_u_318.Direction.Unit, v343)
+            if not v389 and v_u_13.HoodShot then
+                local v418
+                if v342 then
+                    v418 = v342.Instance
+                else
+                    v418 = v342
+                end
+                if v342 then
+                    v342 = v342.Position
+                end
+                local v419 = v_u_13.HoodCamHit
+                if v419 then
+                    v419 = v_u_13.HoodCamHit(v_u_317.Origin, p327, (v331 - v_u_317.Origin).Magnitude + 1)
+                end
+                if v419 then
+                    v418 = v419.Instance
+                    v342 = v419.Position
+                end
+                local v420 = v_u_13.HoodShot
+                local v421
+                if v388 then
+                    v421 = v388.Instance
+                else
+                    v421 = v388
+                end
+                v420(v421, v382, v418, v342, v_u_325)
+            end
+            local v422 = (v392 - v_u_325).Magnitude
+            local v423 = v372 and (v372 + 2.5 < v422 - 1 and v_u_325 + v367 * (v372 + 2.5)) or nil
+            local v424 = v_u_17.Shot
+            local v425 = v_u_50
+            local v426 = v_u_325
+            local v427
+            if v394 then
+                v427 = v394.Normal
+            else
+                v427 = v394
+            end
+            local v428 = nil
+            if v394 then
+                v394 = v394.Instance
+            end
+            local v429
+            if p328 == nil then
+                v429 = false
+            else
+                v429 = p328 > 1
+            end
+            v424(v425, v426, v392, v427, v428, v423, v394, v429)
+            if v389 then
+                v_u_186(v389, (v382 - v_u_325).Magnitude)
+            end
+            for _, v430 in v391 do
+                v_u_186(v430.box, (v430.pos - v_u_325).Magnitude)
+            end
+            if workspace:GetAttribute("DebugHits") then
+                local v431
+                if v388 then
+                    v431 = v388.Instance:FindFirstAncestorOfClass("Model")
+                else
+                    v431 = v388
+                end
+                print(("[TIR] touche : %s (mod\195\168le %s)"):format(v388 and v388.Instance:GetFullName() or "rien", v431 and v431.Name or "-"))
+            end
+        end
+        if v_u_70 and v_u_50 then
+            local v433 = v_u_305(v326, v311)
+            for v434, v435 in v433 do
+                if v432(v435, #v433 > 1 and v434 and v434 or nil) ~= "rocket" then
+                    continue
+                end
+                return
+            end
+            if v_u_70 and (v_u_50 and v_u_70.Fire.BoltTime) then
+                v_u_63 = p306 + v_u_70.Fire.BoltTime
+                v_u_50:SetAttribute("BoltReadyAt", v_u_63)
+            end
+            local v436 = v_u_13.Aiming and v_u_70.Recoil.AimScale or 1
+            v_u_38 = v_u_38 + Vector2.new(v_u_70.Recoil.Up * v436 * v_u_35:NextNumber(0.85, 1.15), v_u_70.Recoil.Side * v436 * v_u_35:NextNumber(-1, 1))
+            v_u_117()
+            if v_u_67 <= 0 then
+                v_u_21.Release(v_u_50)
+                task.delay(0.2, v_u_213)
+            end
+        end
+    else
+        return
+    end
+end
+local function v_u_438() -- name: onUnequip
+    -- upvalues: (ref) v_u_50, (copy) v_u_21, (ref) v_u_60, (ref) v_u_70, (ref) v_u_54, (ref) v_u_57, (copy) v_u_13, (ref) v_u_61, (ref) v_u_63, (copy) v_u_80, (copy) v_u_81, (copy) v_u_82
+    if v_u_50 then
+        v_u_21.StopReload(v_u_50)
+        if v_u_60 then
+            v_u_60:Disconnect()
+            v_u_60 = nil
+        end
+        v_u_50 = nil
+        v_u_70 = nil
+        v_u_54 = false
+        v_u_57 = v_u_57 + 1
+        v_u_13.Equipped = false
+        v_u_13.Aiming = false
+        v_u_13.Reloading = false
+        v_u_13.Combat = false
+        v_u_13.Scoped = false
+        v_u_13.ScopeShake = nil
+        v_u_61 = nil
+        v_u_63 = 0
+        v_u_80.Visible = false
+        v_u_81.Visible = false
+        v_u_82.Visible = false
+    end
+end
+local function v_u_447(p_u_439) -- name: onEquip
+    -- upvalues: (copy) v_u_12, (ref) v_u_50, (ref) v_u_70, (copy) v_u_21, (copy) v_u_17, (copy) v_u_22, (ref) v_u_63, (ref) v_u_62, (ref) v_u_67, (ref) v_u_65, (ref) v_u_60, (copy) v_u_25, (copy) v_u_34, (copy) v_u_117, (ref) v_u_49, (ref) v_u_68, (ref) v_u_52, (copy) v_u_13, (copy) v_u_29, (copy) v_u_80, (copy) v_u_81, (copy) v_u_82
+    local v_u_440 = v_u_12[p_u_439:GetAttribute("Weapon")]
+    if v_u_440 then
+        v_u_50 = p_u_439
+        v_u_70 = v_u_440
+        v_u_21.Prepare(p_u_439, p_u_439:FindFirstChild("Handle"), true, v_u_17.IsSilenced(p_u_439))
+        v_u_22.Cancel(p_u_439)
+        v_u_63 = 0
+        local v441 = p_u_439:GetAttribute("BoltReadyAt")
+        if v_u_440.Fire.SwapCooldown and (v_u_440.Fire.BoltTime and v441) then
+            v_u_63 = v441 - v_u_440.Fire.BoltTime + v_u_440.Fire.SwapCooldown
+        end
+        v_u_62 = p_u_439:GetAttribute("MagSize") or v_u_440.Ammo.Mag
+        v_u_67 = p_u_439:GetAttribute("Ammo") or v_u_62
+        v_u_65 = p_u_439:GetAttribute("Reserve") or v_u_440.Ammo.Reserve
+        if v_u_60 then
+            v_u_60:Disconnect()
+        end
+        v_u_60 = p_u_439:GetAttributeChangedSignal("MagSize"):Connect(function()
+            -- upvalues: (copy) p_u_439, (copy) v_u_440, (ref) v_u_25, (ref) v_u_67, (ref) v_u_62, (ref) v_u_34, (ref) v_u_65, (ref) v_u_117
+            local v442 = p_u_439:GetAttribute("MagSize") or v_u_440.Ammo.Mag
+            local v443 = p_u_439:GetAttribute("AmmoFresh") == true
+            local v444 = v_u_25.FitAmmo(v_u_67, v_u_62, v442, v443)
+            if v444 < v_u_67 and not (v443 or v_u_34.InfiniteAmmo) then
+                v_u_65 = v_u_65 + (v_u_67 - v444)
+            end
+            v_u_67 = v444
+            v_u_62 = v442
+            v_u_117()
+        end)
+        v_u_49 = 0
+        v_u_68 = (-1 / 0)
+        v_u_52 = os.clock() + v_u_440.Handling.EquipTime
+        v_u_13.Equipped = true
+        local v445 = v_u_13
+        local v446 = not v_u_13.CursorFree
+        if v446 then
+            v446 = v_u_29.IsDown("Aim")
+        end
+        v445.Aiming = v446
+        v_u_13.AimWalkSpeed = v_u_440.Handling.AimWalkSpeed
+        v_u_13.AimFOV = v_u_440.Handling.AimFOV
+        v_u_80.Visible = true
+        v_u_81.Visible = true
+        v_u_82.Visible = false
+        v_u_117()
+    end
+end
+local function v469(p_u_448) -- name: onCharacter
+    -- upvalues: (copy) v_u_438, (ref) v_u_44, (ref) v_u_56, (ref) v_u_53, (copy) v_u_447, (ref) v_u_50, (copy) v_u_13, (copy) v_u_91, (ref) v_u_89, (ref) v_u_88
+    v_u_438()
+    v_u_44 = p_u_448
+    v_u_56 = p_u_448:WaitForChild("Humanoid")
+    v_u_53 = p_u_448:WaitForChild("HumanoidRootPart")
+    p_u_448.ChildAdded:Connect(function(p449)
+        -- upvalues: (ref) v_u_447
+        if p449:IsA("Tool") and p449:GetAttribute("Weapon") then
+            v_u_447(p449)
+        end
+    end)
+    p_u_448.ChildRemoved:Connect(function(p450)
+        -- upvalues: (ref) v_u_50, (ref) v_u_438
+        if p450 == v_u_50 then
+            v_u_438()
+        end
+    end)
+    local v_u_451 = v_u_56.Health
+    v_u_56.HealthChanged:Connect(function(p452)
+        -- upvalues: (ref) v_u_451, (ref) v_u_13, (ref) v_u_91, (ref) v_u_89, (ref) v_u_88
+        if p452 < v_u_451 then
+            local v453 = "health"
+            if not v_u_13.Spectating then
+                local v454 = v453 or "health"
+                local v455 = os.clock()
+                if v455 - v_u_91[v454] >= 0.05 then
+                    v_u_91[v454] = v455
+                    if v454 == "armor" then
+                        local v456 = v_u_89
+                        local v457 = math.max(v456, 0.15) + 0.3
+                        v_u_89 = math.min(0.42, v457)
+                    else
+                        local v458 = v_u_88
+                        local v459 = math.max(v458, 0.15) + 0.3
+                        v_u_88 = math.min(0.42, v459)
+                    end
+                end
+            end
+        end
+        v_u_451 = p452
+    end)
+    local v_u_460 = p_u_448:GetAttribute("Armor") or 0
+    p_u_448:GetAttributeChangedSignal("Armor"):Connect(function()
+        -- upvalues: (copy) p_u_448, (ref) v_u_460, (ref) v_u_13, (ref) v_u_91, (ref) v_u_89, (ref) v_u_88
+        local v461 = p_u_448:GetAttribute("Armor") or 0
+        if v461 < v_u_460 and not p_u_448:GetAttribute("ArmorSilent") then
+            local v462 = "armor"
+            if not v_u_13.Spectating then
+                local v463 = v462 or "health"
+                local v464 = os.clock()
+                if v464 - v_u_91[v463] >= 0.05 then
+                    v_u_91[v463] = v464
+                    if v463 == "armor" then
+                        local v465 = v_u_89
+                        local v466 = math.max(v465, 0.15) + 0.3
+                        v_u_89 = math.min(0.42, v466)
+                    else
+                        local v467 = v_u_88
+                        local v468 = math.max(v467, 0.15) + 0.3
+                        v_u_88 = math.min(0.42, v468)
+                    end
+                end
+            end
+        end
+        v_u_460 = v461
+    end)
+    v_u_56.Died:Connect(v_u_438)
+end
+v_u_31.CharacterAdded:Connect(v469)
+if v_u_31.Character then
+    task.spawn(v469, v_u_31.Character)
+end
+local v_u_470 = nil
+v_u_29.OnInputBegan(function(p471, p472)
+    -- upvalues: (copy) v_u_13, (copy) v_u_29, (ref) v_u_50, (ref) v_u_54, (ref) v_u_69, (ref) v_u_51, (ref) v_u_470, (copy) v_u_213
+    if p472 or (v_u_13.CursorFree or not v_u_29.Is("Shoulder", p471)) then
+        if not p472 and (v_u_50 and not v_u_13.CursorFree) then
+            local v473 = v_u_13.Vehicle
+            local v474
+            if v473 == nil or v473.Driver ~= true then
+                v474 = false
+            else
+                v474 = p471.KeyCode == Enum.KeyCode.ButtonR2 and true or p471.KeyCode == Enum.KeyCode.ButtonL2
+            end
+            if not v474 then
+                if v_u_13.CaseRolling then
+                    return
+                else
+                    local v475 = v_u_13.Vehicle
+                    if v475 and (v475.Driver and v_u_29.Is("DriveAim", p471)) then
+                        v_u_13.Aiming = true
+                        return
+                    elseif v475 and (v475.Driver and (v_u_13.Aiming and v_u_29.Is("DriveFire", p471))) then
+                        v_u_54 = true
+                        v_u_69 = os.clock()
+                        v_u_51 = true
+                        return
+                    elseif v_u_29.Is("Fire", p471) then
+                        v_u_54 = true
+                        v_u_69 = os.clock()
+                        v_u_51 = true
+                        return
+                    elseif v_u_29.Is("Aim", p471) then
+                        v_u_13.Aiming = true
+                    elseif v_u_29.Is("Reload", p471) then
+                        if v475 and v475.Driver then
+                            v_u_470 = os.clock()
+                            return
+                        end
+                        v_u_213()
+                    end
+                end
+            end
+        end
+    else
+        v_u_13.Shoulder = -v_u_13.Shoulder
+    end
+end)
+v_u_29.OnInputEnded(function(p476)
+    -- upvalues: (copy) v_u_29, (ref) v_u_470, (copy) v_u_13, (ref) v_u_50, (copy) v_u_213, (ref) v_u_54, (copy) v_u_21, (ref) v_u_58
+    if v_u_29.Is("Reload", p476) and v_u_470 then
+        local v477 = os.clock() - v_u_470
+        v_u_470 = nil
+        local v478 = v_u_13.Vehicle
+        local v479
+        if v_u_13.RepairPressAt == nil then
+            v479 = false
+        else
+            local v480 = v_u_13.RepairPressAt - (os.clock() - v477)
+            v479 = math.abs(v480) < 0.25
+        end
+        if v477 < 0.3 and (v_u_50 and (v478 and (v478.Driver and not v479))) then
+            v_u_213()
+        end
+        return
+    else
+        local v481 = v_u_13.Vehicle
+        local v482
+        if v481 == nil then
+            v482 = false
+        else
+            v482 = v481.Driver == true
+        end
+        if v482 then
+            local v483 = v_u_13.Vehicle
+            local v484
+            if v483 == nil or v483.Driver ~= true then
+                v484 = false
+            else
+                v484 = p476.KeyCode == Enum.KeyCode.ButtonR2 and true or p476.KeyCode == Enum.KeyCode.ButtonL2
+            end
+            if v484 then
+                return
+            end
+        end
+        if v_u_29.Is("Fire", p476) or v_u_29.Is("DriveFire", p476) and (v_u_54 and (v482 or not v_u_29.IsDown("Fire"))) then
+            v_u_54 = false
+            v_u_21.Release(v_u_50)
+            v_u_58 = 0
+        elseif v_u_29.Is("Aim", p476) or v_u_29.Is("DriveAim", p476) and (v_u_13.Aiming and (v482 or not v_u_29.IsDown("Aim"))) then
+            v_u_13.Aiming = false
+            v_u_21.Release(v_u_50)
+            v_u_58 = 0
+        end
+    end
+end)
+local function v_u_500(p485) -- name: sendStance
+    -- upvalues: (copy) v_u_11, (copy) v_u_13, (ref) v_u_56, (copy) v_u_32, (ref) v_u_55, (ref) v_u_66, (ref) v_u_64, (ref) v_u_59, (copy) v_u_30, (copy) v_u_28
+    local v486 = v_u_11.StanceIds[v_u_13.Stance] or 0
+    local v487 = v_u_13.CamPitch
+    local v488 = math.deg(v487) + 0.5
+    local v489 = math.floor(v488)
+    local v490 = nil
+    local v491 = v_u_56 and (v_u_56.SeatPart and v_u_56.Parent)
+    if v491 then
+        v491 = v_u_56.Parent:FindFirstChild("HumanoidRootPart")
+    end
+    if v491 then
+        local v492 = v491.CFrame:VectorToObjectSpace(v_u_32.CFrame.LookVector)
+        local v493 = -v492.X
+        local v494 = -v492.Z
+        local v495 = math.atan2(v493, v494)
+        local v496 = math.deg(v495) + 0.5
+        v490 = math.floor(v496)
+    end
+    local v497
+    if v490 == v_u_55 then
+        v497 = true
+    elseif v490 == nil or v_u_55 == nil then
+        v497 = false
+    else
+        local v498 = v490 - v_u_55
+        v497 = math.abs(v498) < 3
+    end
+    if v486 == v_u_66 then
+        local v499 = v489 - v_u_64
+        if math.abs(v499) < 2 and (v497 and p485 - v_u_59 < 0.5) then
+            return
+        end
+    end
+    if p485 - v_u_59 >= 0.06666666666666667 then
+        v_u_59 = p485
+        v_u_66 = v486
+        v_u_64 = v489
+        v_u_55 = v490
+        v_u_30.Out(v_u_28.AimState.FireServer, v_u_28.AimState, v486, v489, v490)
+    end
+end
+local v_u_501 = false
+local function v_u_503(_, p502) -- name: onAltZoom
+    -- upvalues: (ref) v_u_50, (copy) v_u_27, (copy) v_u_20
+    if p502 == Enum.UserInputState.Begin and v_u_50 then
+        v_u_27[v_u_50] = not v_u_27[v_u_50] or nil
+        v_u_20.Play("SightZoom")
+    end
+    return Enum.ContextActionResult.Sink
+end
+local function v_u_505(p504) -- name: bindAltZoom
+    -- upvalues: (ref) v_u_501, (copy) v_u_9, (copy) v_u_503
+    if p504 == v_u_501 then
+        return
+    else
+        v_u_501 = p504
+        if p504 then
+            v_u_9:BindActionAtPriority("OpticAltZoom", v_u_503, false, Enum.ContextActionPriority.High.Value + 100, Enum.KeyCode.F, Enum.KeyCode.ButtonL3)
+        else
+            v_u_9:UnbindAction("OpticAltZoom")
+        end
+    end
+end
+local v_u_506 = game:GetService("GuiService")
+local function v507() -- name: dropTrigger
+    -- upvalues: (ref) v_u_54, (ref) v_u_50, (copy) v_u_21, (ref) v_u_69
+    if v_u_54 and v_u_50 then
+        v_u_21.Release(v_u_50)
+    end
+    v_u_54 = false
+    v_u_69 = 0
+end
+v_u_506.MenuOpened:Connect(v507)
+v5.WindowFocusReleased:Connect(v507)
+v6:BindToRenderStep("WeaponClient", Enum.RenderPriority.Camera.Value - 1, function(p508)
+    -- upvalues: (copy) v_u_34, (ref) v_u_44, (ref) v_u_48, (ref) v_u_50, (copy) v_u_117, (ref) v_u_56, (copy) v_u_13, (ref) v_u_501, (copy) v_u_9, (ref) v_u_70, (copy) v_u_31, (copy) v_u_500, (copy) v_u_26, (copy) v_u_25, (copy) v_u_505, (copy) v_u_27, (ref) v_u_61, (ref) v_u_52, (copy) v_u_22, (ref) v_u_68, (ref) v_u_49, (ref) v_u_38, (ref) v_u_39, (ref) v_u_15, (ref) v_u_16, (ref) v_u_45, (ref) v_u_67, (copy) v_u_213, (ref) v_u_54, (ref) v_u_69, (copy) v_u_7, (copy) v_u_506, (copy) v_u_21, (ref) v_u_187, (copy) v_u_2, (ref) v_u_63, (copy) v_u_437, (ref) v_u_51, (ref) v_u_65, (copy) v_u_20, (copy) v_u_151
+    local v509
+    if v_u_34.InfiniteAmmo == true then
+        v509 = true
+    elseif v_u_44 == nil then
+        v509 = false
+    else
+        v509 = v_u_44:GetAttribute("InFarmZone") == true
+    end
+    if v509 ~= v_u_48 then
+        v_u_48 = v509
+        if v_u_50 then
+            v_u_117()
+        end
+    end
+    if not v_u_50 or (not v_u_56 or v_u_56.Health <= 0) then
+        v_u_13.Scoped = false
+        v_u_13.ScopeShake = nil
+        v_u_13.AimZoomK = nil
+        v_u_13.SpreadMultiplier = nil
+        if v_u_501 ~= false then
+            v_u_501 = false
+            v_u_9:UnbindAction("OpticAltZoom")
+        end
+    end
+    local v510 = os.clock()
+    v_u_13.Combat = v_u_13.Aiming
+    if v_u_13.Reloading then
+        v_u_13.Stance = "Reload"
+        if v_u_13.Combat and (v_u_70.Handling.Pistol or v_u_70.Ammo.Shell) then
+            v_u_13.Stance = "ReloadAim"
+        end
+    elseif v_u_13.Combat then
+        v_u_13.Stance = "Aim"
+    elseif v_u_13.Sprinting then
+        v_u_13.Stance = "Sprint"
+    else
+        v_u_13.Stance = "Low"
+    end
+    local v511 = v_u_31:GetAttribute("DebugStance")
+    if v511 then
+        v_u_13.Stance = v511
+        v_u_13.Combat = v511 == "Aim"
+    end
+    v_u_500(v510)
+    local v512 = v_u_70.Handling.Scope
+    local v513 = v_u_50:GetAttribute("Mods")
+    if v513 ~= v_u_26.text then
+        local v514 = v_u_26
+        local v515 = v_u_26
+        local v516 = v_u_25.Decode(v513)
+        v514.text = v513
+        v515.mods = v516
+    end
+    local v517 = v_u_26.mods
+    v_u_13.SpreadMultiplier = v_u_25.SpreadScale(v517)
+    if v517.Optic ~= nil then
+        v512 = nil
+    end
+    local v518 = v_u_25.Items[v517.Optic or ""]
+    local v519 = v_u_505
+    local v520 = v518 ~= nil and (v518.AltZoom ~= nil and v_u_13.Aiming == true) and not v_u_13.Vehicle
+    if v520 then
+        v520 = not v_u_13.CursorFree
+    end
+    v519(v520)
+    local v521 = v_u_70.Handling.AimFOV
+    v_u_13.AimFOV = v_u_25.AimFOV(v517, v521, v_u_27[v_u_50] == true)
+    v_u_13.AimZoomK = v_u_13.AimFOV < v521 and v_u_13.AimFOV / v521 or nil
+    if v_u_13.Aiming then
+        v_u_61 = v_u_61 or v510
+    else
+        v_u_61 = nil
+    end
+    local v522 = v512 ~= nil and (v_u_61 ~= nil and (v510 - v_u_61 >= (v512.Delay or 0) and v_u_52 <= v510)) and not (v_u_13.Reloading or v_u_13.Rolling)
+    if v522 then
+        v522 = not v_u_13.WardrobeFocusX
+    end
+    v_u_13.Scoped = v522
+    local v523 = v_u_13
+    local v524
+    if v512 then
+        v524 = v512.FOV or nil
+    else
+        v524 = nil
+    end
+    v523.ScopeFOV = v524
+    v_u_13.ScopeOverlay = v512 and v512.Overlay or nil
+    v_u_13.ScopeShake = v522 and v_u_22.ScopeShake(v_u_22.Progress(v_u_50)) or nil
+    if v510 - v_u_68 > 0.15 then
+        local v525 = v_u_49 - v_u_70.Bloom.Recovery * p508
+        v_u_49 = math.max(0, v525)
+    end
+    local v526 = v_u_38
+    local v527 = -v_u_70.Recoil.Return * p508
+    v_u_38 = v526 * math.exp(v527)
+    local v528 = v_u_39
+    local v529 = v_u_38
+    local v530 = -p508 * 35
+    local v531 = v528:Lerp(v529, 1 - math.exp(v530))
+    local v532 = v531 - v_u_39
+    v_u_39 = v531
+    local v533 = v_u_15
+    local v534 = v532.X
+    v_u_15 = v533 + math.rad(v534)
+    local v535 = v_u_16
+    local v536 = v532.Y
+    v_u_16 = v535 + math.rad(v536)
+    local v537 = v_u_45
+    if v537 then
+        local v538 = v_u_13
+        local v539 = v_u_45
+        v537 = rawget(v538, v539)
+    end
+    if v537 then
+        v537(v_u_15, v_u_16)
+        v_u_15 = 0
+        v_u_16 = 0
+    end
+    if v_u_67 <= 0 and (not v_u_13.Reloading and (v_u_52 <= v510 and v510 - v_u_68 >= 0.2)) then
+        v_u_213()
+    end
+    local v540
+    if v_u_70.Fire.Mode == "Auto" then
+        v540 = v_u_54
+    elseif v_u_69 > 0 then
+        v540 = v510 - v_u_69 < 0.2
+    else
+        v540 = false
+    end
+    local v541 = v_u_7 and v_u_13.TestFire == true and true or v540
+    if (v_u_13.CursorFree or v_u_506.MenuIsOpen) and (v_u_54 or v_u_69 > 0) then
+        if v_u_54 then
+            v_u_21.Release(v_u_50)
+        end
+        v541 = false
+        v_u_54 = false
+        v_u_69 = 0
+    end
+    if v541 and (v_u_13.Aiming and (v_u_13.Reloading and (v_u_187 and v_u_67 > 0))) then
+        v_u_187()
+        v_u_69 = v510
+    end
+    if v_u_13.CaseRolling or (v_u_13.BetaIntermission or (v_u_31:GetAttribute("InCarGarage") or v_u_2.Active(v_u_31.Character))) then
+        v541 = false
+        v_u_54 = false
+        v_u_69 = 0
+    end
+    local v542, v543, v544
+    if v541 and (v_u_13.Aiming and (not v_u_13.Rolling and (not v_u_13.Reloading and (v_u_52 <= v510 and (v_u_63 <= v510 and v510 - v_u_68 >= 60 / v_u_70.Fire.RPM))))) then
+        v_u_69 = 0
+        if v_u_67 > 0 then
+            v_u_437(v510)
+            v_u_51 = false
+            v_u_13.Spread = v_u_151()
+            v542 = v_u_13
+            v543 = v_u_13.Aiming and v_u_70.Bloom.Aim or v_u_70.Bloom.Hip
+            v544 = v_u_70.Bloom.Max
+            v542.SpreadRest = math.min(v543, v544) * (v_u_13.SpreadMultiplier or 1) * (v_u_34.BloomScale or 1)
+        else
+            if v_u_65 <= 0 then
+                local v545
+                if v_u_34.InfiniteAmmo == true then
+                    v545 = true
+                elseif v_u_44 == nil then
+                    v545 = false
+                else
+                    v545 = v_u_44:GetAttribute("InFarmZone") == true
+                end
+                if not v545 then
+                    if v_u_51 then
+                        v_u_51 = false
+                        v_u_20.Play("NoAmmo")
+                    end
+                    v_u_13.Spread = v_u_151()
+                    v542 = v_u_13
+                    v543 = v_u_13.Aiming and v_u_70.Bloom.Aim or v_u_70.Bloom.Hip
+                    v544 = v_u_70.Bloom.Max
+                    v542.SpreadRest = math.min(v543, v544) * (v_u_13.SpreadMultiplier or 1) * (v_u_34.BloomScale or 1)
+                    return
+                end
+                v_u_213()
+            else
+                v_u_213()
+            end
+            v_u_13.Spread = v_u_151()
+            v542 = v_u_13
+            v543 = v_u_13.Aiming and v_u_70.Bloom.Aim or v_u_70.Bloom.Hip
+            v544 = v_u_70.Bloom.Max
+            v542.SpreadRest = math.min(v543, v544) * (v_u_13.SpreadMultiplier or 1) * (v_u_34.BloomScale or 1)
+        end
+    else
+        v_u_13.Spread = v_u_151()
+        v542 = v_u_13
+        v543 = v_u_13.Aiming and v_u_70.Bloom.Aim or v_u_70.Bloom.Hip
+        v544 = v_u_70.Bloom.Max
+        v542.SpreadRest = math.min(v543, v544) * (v_u_13.SpreadMultiplier or 1) * (v_u_34.BloomScale or 1)
+        return
+    end
+end)
+v_u_3.PlayerAdded:Connect(function(p546) -- name: watchOther
+    -- upvalues: (copy) v_u_31, (copy) v_u_21, (copy) v_u_17
+    if p546 ~= v_u_31 then
+        local function v553(p_u_547) -- name: onChar
+            -- upvalues: (ref) v_u_21, (ref) v_u_17
+            local function v550(p_u_548) -- name: onTool
+                -- upvalues: (copy) p_u_547, (ref) v_u_21, (ref) v_u_17
+                if p_u_548:IsA("Tool") and p_u_548:GetAttribute("Weapon") then
+                    task.defer(function()
+                        -- upvalues: (copy) p_u_548, (ref) p_u_547, (ref) v_u_21, (ref) v_u_17
+                        local v549 = p_u_548:FindFirstChild("Handle")
+                        if v549 and p_u_548.Parent == p_u_547 then
+                            v_u_21.Prepare(p_u_548, v549, false, v_u_17.IsSilenced(p_u_548))
+                        end
+                    end)
+                end
+            end
+            p_u_547.ChildAdded:Connect(v550)
+            for _, v_u_551 in p_u_547:GetChildren() do
+                if not (v_u_551:IsA("Tool") and v_u_551:GetAttribute("Weapon")) then
+                    continue
+                end
+                task.defer(function()
+                    -- upvalues: (copy) v_u_551, (copy) p_u_547, (ref) v_u_21, (ref) v_u_17
+                    local v552 = v_u_551:FindFirstChild("Handle")
+                    if v552 and v_u_551.Parent == p_u_547 then
+                        v_u_21.Prepare(v_u_551, v552, false, v_u_17.IsSilenced(v_u_551))
+                    end
+                end)
+            end
+        end
+        p546.CharacterAdded:Connect(v553)
+        if p546.Character then
+            v553(p546.Character)
+        end
+    end
+end)
+local v_u_554 = v_u_88
+local v_u_555 = v_u_89
+for _, v556 in v_u_3:GetPlayers() do
+    if v556 == v_u_31 then
+        continue
+    end
+    local function v563(p_u_557) -- name: onChar
+        -- upvalues: (copy) v_u_21, (copy) v_u_17
+        local function v560(p_u_558) -- name: onTool
+            -- upvalues: (copy) p_u_557, (ref) v_u_21, (ref) v_u_17
+            if p_u_558:IsA("Tool") and p_u_558:GetAttribute("Weapon") then
+                task.defer(function()
+                    -- upvalues: (copy) p_u_558, (ref) p_u_557, (ref) v_u_21, (ref) v_u_17
+                    local v559 = p_u_558:FindFirstChild("Handle")
+                    if v559 and p_u_558.Parent == p_u_557 then
+                        v_u_21.Prepare(p_u_558, v559, false, v_u_17.IsSilenced(p_u_558))
+                    end
+                end)
+            end
+        end
+        p_u_557.ChildAdded:Connect(v560)
+        for _, v_u_561 in p_u_557:GetChildren() do
+            if not (v_u_561:IsA("Tool") and v_u_561:GetAttribute("Weapon")) then
+                continue
+            end
+            task.defer(function()
+                -- upvalues: (copy) v_u_561, (copy) p_u_557, (ref) v_u_21, (ref) v_u_17
+                local v562 = v_u_561:FindFirstChild("Handle")
+                if v562 and v_u_561.Parent == p_u_557 then
+                    v_u_21.Prepare(v_u_561, v562, false, v_u_17.IsSilenced(v_u_561))
+                end
+            end)
+        end
+    end
+    v556.CharacterAdded:Connect(v563)
+    if not v556.Character then
+        continue
+    end
+    v563(v556.Character)
+end
+v_u_28.Hit.OnClientEvent:Connect(v_u_30.Wrap(v145))
+local v564 = v_u_28:WaitForChild("HitFX", 10)
+if v564 then
+    v564.OnClientEvent:Connect(v_u_30.Wrap(function(p565, p566, p567)
+        -- upvalues: (copy) v_u_17
+        if typeof(p565) == "Instance" and (typeof(p566) == "Vector3" and typeof(p567) == "Vector3") then
+            v_u_17.Blood(p565, p567, p567 - p566)
+        end
+    end))
+end
+local v_u_568 = RaycastParams.new()
+v_u_568.IgnoreWater = true
+v_u_568.FilterType = Enum.RaycastFilterType.Exclude
+v_u_568.CollisionGroup = "Bullet"
+v_u_28.FX.OnClientEvent:Connect(v_u_30.Wrap(function(p569, p570, p571, p572, p573)
+    -- upvalues: (copy) v_u_17, (copy) v_u_33, (copy) v_u_568, (copy) v_u_24
+    if p572 and (typeof(p570) == "Vector3" and typeof(p571) == "Vector3") then
+        v_u_17.Blood(p572, p571, p571 - p570)
+    end
+    if p569 and p569:IsA("Player") then
+        p569 = p569.Character or p569
+    end
+    local v574
+    if p569 then
+        v574 = p569:FindFirstChildOfClass("Tool") or p569:FindFirstChild("GunFX")
+    else
+        v574 = p569
+    end
+    local v575 = nil
+    if typeof(p570) == "Vector3" and (typeof(p571) == "Vector3" and (p571 - p570).Magnitude > 0.1) then
+        local v576 = p571 - p570
+        local v577 = { p569, v_u_33, workspace:FindFirstChild("ClientHitboxes") }
+        for _ = 1, 16 do
+            v_u_568.FilterDescendantsInstances = v577
+            local v578 = workspace:Raycast(p570, v576 + v576.Unit * 0.5, v_u_568)
+            if not v578 then
+                break
+            end
+            local v579 = v578.Instance.Name
+            if v579:sub(1, 6) == "Glass_" then
+                local v580 = v578.Instance
+                table.insert(v577, v580)
+            else
+                if v579:sub(1, 6) ~= "Armor_" then
+                    v575 = v578
+                    break
+                end
+                local v581, v582, v583 = v_u_24.Find(v578.Instance, v578.Position, v576)
+                if v581 then
+                    v575 = {
+                        ["Instance"] = v581,
+                        ["Position"] = v582,
+                        ["Normal"] = v583
+                    }
+                    break
+                end
+                local v584 = v578.Instance
+                table.insert(v577, v584)
+            end
+        end
+        if v575 and (v575.Position - p570).Magnitude < v576.Magnitude - 0.3 then
+            p571 = v575.Position
+        end
+    end
+    local v585 = v_u_17.Shot
+    local v586
+    if v575 then
+        v586 = v575.Normal
+    else
+        v586 = v575
+    end
+    local v587 = true
+    local v588 = nil
+    if v575 then
+        v575 = v575.Instance
+    end
+    v585(v574, p570, p571, v586, v587, v588, v575, p573 == true)
+end))
+task.spawn(function()
+    -- upvalues: (copy) v_u_28
+    local v589 = v_u_28:WaitForChild("FXReady", 30)
+    if v589 then
+        v589:FireServer()
+    end
+end)
+v_u_28:WaitForChild("Hurt").OnClientEvent:Connect(v_u_30.Wrap(function()
+    -- upvalues: (copy) v_u_13, (copy) v_u_20, (copy) v_u_91, (ref) v_u_44, (ref) v_u_555, (ref) v_u_554
+    if not v_u_13.Spectating then
+        v_u_20.OnHurt()
+        task.delay(0.12, function()
+            -- upvalues: (ref) v_u_91, (ref) v_u_44, (ref) v_u_13, (ref) v_u_555, (ref) v_u_554
+            local v590 = os.clock()
+            if v590 - v_u_91.health < 0.3 or v590 - v_u_91.armor < 0.3 then
+                return
+            else
+                local v591 = (v_u_44 and v_u_44:GetAttribute("Armor") or 0) > 0 and "armor" or "health"
+                if v_u_13.Spectating then
+                    return
+                else
+                    local v592 = v591 or "health"
+                    local v593 = os.clock()
+                    if v593 - v_u_91[v592] < 0.05 then
+                        return
+                    else
+                        v_u_91[v592] = v593
+                        if v592 == "armor" then
+                            local v594 = v_u_555
+                            local v595 = math.max(v594, 0.15) + 0.3
+                            v_u_555 = math.min(0.42, v595)
+                        else
+                            local v596 = v_u_554
+                            local v597 = math.max(v596, 0.15) + 0.3
+                            v_u_554 = math.min(0.42, v597)
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end))
