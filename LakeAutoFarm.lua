@@ -1,13 +1,14 @@
 --!nocheck
--- LakeAutoFarm.lua  |  client executor script, WindUI front end
+-- LakeAutoFarm.lua  v2  |  client executor script, WindUI front end
 -- Built from the Dumper v2.0 dump of PlaceId 134148497865430 (2026-11-22, dump 3).
 -- Not run in-game by the author. See the status notes delivered with this file.
 --
--- Loop: scoop water from the lake -> walk to Grandpa's PourZone -> pour -> repeat.
+-- Loop: collect water -> walk to Grandpa -> deliver -> repeat, for every tool in Config.Tools.
+--   Scoop tools (Spoon, Glass, Buckets, Tub, Aquarium, Canteen): ScoopHold / PourHold.
+--   Hold tools  (Hose, Vacuum, SuperSoaker): HoseState "fill" / "spray" / "stop".
 -- Auto Upgrade is an independent toggle that buys the cheapest affordable skill-tree node.
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PathfindingService = game:GetService("PathfindingService")
 
@@ -20,44 +21,52 @@ local Build = {
 	PlaceId = 134148497865430, -- summary.txt
 
 	RemotesFolder = "Remotes", -- ReplicatedStorage.Remotes, hierarchy.txt
-	ScoopHold = "ScoopHold", -- RemoteEvent. ScoopController: FireServer(true, waterPoint:Vector3) / FireServer(false)
+	ScoopHold = "ScoopHold", -- RemoteEvent. ScoopController: FireServer(true, waterPoint) / FireServer(false)
 	PourHold = "PourHold", -- RemoteEvent. PourController: FireServer(true) / FireServer(false)
+	HoseState = "HoseState", -- RemoteEvent. HoseController: FireServer("fill", point) / ("spray") / ("stop")
 	Upgrade = "Upgrade", -- RemoteFunction. SkillTreeController: InvokeServer(tab, track) -> ok, reason
 
-	-- Module scripts the game itself requires
 	ToolsConfigPath = { "Config", "Tools" },
-	SkillTreePath = { "SkillTree" },
+	SkillTreePath = { "SkillTree" }, -- SkillTree.Upg is the Upgrades module (stat, BOTTOMLESS_CAP, trackOpen)
 	LakeShapePath = { "Lake", "LakeShape" }, -- hasWater(x, z, level)
 
-	-- Workspace objects. ScoopController / PourController
+	-- Workspace objects. ScoopController / PourController / HoseController
 	MapName = "Map",
-	WaterName = "Water", -- Map.Water, attribute SpoonsLeft
+	WaterName = "Water", -- Map.Water, attribute SpoonsLeft; its top face is the water level
 	BasinCollisionName = "BasinCollision",
 	GrandpaAreaName = "GrandpaArea",
-	PourZoneName = "PourZone", -- Part, attribute Radius (default 4.5 in PourController.inZone)
+	PourZoneName = "PourZone", -- Part, attribute Radius
 	GrandpaName = "Grandpa",
-	PourZoneDefaultRadius = 4.5,
-	PourZoneSlack = 0.5,
+	PourZoneDefaultRadius = 4.5, -- PourController.inZone
+	PourZoneSlack = 0.5, -- PourController.inZone
+	HoseRingSlack = 1, -- HoseController.inRing
+	MouthLocalOffset = Vector3.new(0, -0.68, -0.45), -- HoseController.mouthTarget, relative to Grandpa's Head
 
 	-- LocalPlayer attributes
 	ToolAttr = "Tool", -- missing means "Spoon" (ScoopController)
 	DefaultTool = "Spoon",
 	CarriedAttr = "Carried",
-	CapacityAttr = "Capacity", -- falls back to Tools[tool].capacity
+	CapacityAttr = "Capacity", -- falls back to Upgrades.stat(..., "capacity"), then Tools[tool].capacity
 	StunAttr = "DedaStunUntil", -- compared against os.clock()
 	MegaStrawAttr = "MegaStrawCarrying",
 	IntroAttr = "InIntro", -- SkillTreeController
 	CoinsAttr = "CoinsCents", -- SkillTreeController
 
-	-- Water attribute: no spoons left means the lake is drained
-	SpoonsLeftAttr = "SpoonsLeft",
-
-	-- Grandpa attributes. PourController.startPour
-	GrandpaStateAttr = "DedaState", -- "Doze" means asleep
+	SpoonsLeftAttr = "SpoonsLeft", -- Map.Water attribute; <= 0 means drained (ScoopController.aimPoint)
+	GrandpaStateAttr = "DedaState", -- "Doze" means asleep (PourController.startPour)
 	GrandpaWantsChocoAttr = "DedaWantsChoco",
 
-	ScoopRefreshSeconds = 0.2, -- ScoopController re-sends the aim point every 0.2 s while holding
+	ScoopRefreshSeconds = 0.2, -- ScoopController re-sends the aim point every 0.2 s
+	HoseSendSeconds = 0.15, -- HoseController re-sends the state every 0.15 s
+	HoseReachMargin = 0.4, -- HoseController.aimWater: reach - 0.4
+	ScoopReachMargin = 0.4, -- ASSUMPTION: same safety margin as the hose; ScoopController itself uses reach with no margin
+
+	-- Tuning (not from the game)
+	BottomlessCapFallback = 1000000, -- Upgrades.BOTTOMLESS_CAP, used only if that field is missing
+	BottomlessTripScoops = 12, -- UNCALIBRATED: scoops per delivery trip for infinite-capacity tools (Canteen)
 	AimRepickSeconds = 1.0,
+	StandCacheSeconds = 10,
+	StandLevelTolerance = 0.25, -- re-plan the standing spot when the water level moves more than this
 	UpgradeIntervalSeconds = 1.0,
 	UpgradeRefusalCooldown = 30,
 	WaitTimeout = 15,
@@ -121,6 +130,8 @@ local function resolve()
 	if not G.scoopHold then return fail(err) end
 	G.pourHold, err = need(remotes, Build.PourHold, "RemoteEvent")
 	if not G.pourHold then return fail(err) end
+	G.hoseState, err = need(remotes, Build.HoseState, "RemoteEvent")
+	if not G.hoseState then return fail(err) end
 	G.upgrade, err = need(remotes, Build.Upgrade, "RemoteFunction")
 	if not G.upgrade then return fail(err) end
 
@@ -140,9 +151,10 @@ local function resolve()
 			return fail("SkillTree." .. fnName .. " is not a function")
 		end
 	end
-	if type(st.Upg.trackOpen) ~= "function" then
-		return fail("SkillTree.Upg.trackOpen is not a function")
+	if type(st.Upg.trackOpen) ~= "function" or type(st.Upg.stat) ~= "function" then
+		return fail("SkillTree.Upg.trackOpen or .stat is not a function")
 	end
+	G.upg = st.Upg
 	if type(G.lakeShape.hasWater) ~= "function" then
 		return fail("LakeShape.hasWater is not a function")
 	end
@@ -191,13 +203,17 @@ end
 local Farm = { Enabled = false }
 local Upgrader = { Enabled = false }
 local alive = true
-local phase = "Scoop" -- "Scoop" or "Pour"
-local scooping, pouring = false, false
+local phase = "Collect" -- "Collect" or "Deliver"
+local scooping, pouring, hoseActive = false, false, false
+local hoseLastState, hoseLastSendAt = nil, 0
 local nextScoopSendAt = 0
 local aimPoint, aimPickedAt = nil, 0
-local standCache, standCachedAt = nil, 0
+local standCache = nil -- { pos = Vector3, level = number, reach = number, at = number }
+local squeeze = 0 -- studs to move closer to the water after arriving without a valid aim
+local justWalkedToLake = false
 local lastReason, lastNotifyAt = nil, 0
 local failedUntil = {}
+local connections = {}
 local Notify = function() end -- replaced once the UI exists
 
 local function report(reason)
@@ -214,7 +230,7 @@ local function report(reason)
 end
 
 --------------------------------------------------------------------------
--- Remote helpers (every "true" send has a matching "false")
+-- Remote helpers (every "active" send has a matching stop)
 --------------------------------------------------------------------------
 local function stopScoop()
 	if scooping then
@@ -230,53 +246,106 @@ local function stopPour()
 	end
 end
 
+local function stopHose()
+	if hoseActive then
+		hoseActive = false
+		hoseLastState = "stop"
+		Game.hoseState:FireServer("stop")
+	end
+end
+
+local function sendHose(state, point)
+	local now = os.clock()
+	if state ~= hoseLastState or now - hoseLastSendAt >= Build.HoseSendSeconds then
+		hoseLastState = state
+		hoseLastSendAt = now
+		hoseActive = true
+		Game.hoseState:FireServer(state, point)
+	end
+end
+
 local function releaseAll()
 	stopScoop()
 	stopPour()
+	stopHose()
+end
+
+local function stopCollect(kind)
+	if kind == "Scoop" then stopScoop() else stopHose() end
+end
+
+local function stopDeliver(kind)
+	if kind == "Scoop" then stopPour() else stopHose() end
 end
 
 --------------------------------------------------------------------------
--- Aim and geometry
+-- Geometry
 --------------------------------------------------------------------------
 local function waterLevel()
-	return Game.water.Position.Y + Game.water.Size.Y / 2
+	return Game.water.Position.Y + Game.water.Size.Y / 2 -- read live, the lake level changes
 end
 
-local includeParams = RaycastParams.new()
-includeParams.FilterType = Enum.RaycastFilterType.Include
-includeParams.FilterDescendantsInstances = { Game.basin }
-
-local excludeParams = RaycastParams.new()
-excludeParams.FilterType = Enum.RaycastFilterType.Exclude
-excludeParams.RespectCanCollide = true
-
--- Mirrors the two obstruction tests in ScoopController.aimPoint.
-local function clearPath(origin, target)
-	local delta = target - origin
-	local distance = delta.Magnitude
-	local basinHit = workspace:Raycast(origin, delta, includeParams)
-	if basinHit and (basinHit.Position - origin).Magnitude < distance - 0.6 then
-		return false
-	end
-
-	local ignore = {}
+local function characterList()
+	local list = {}
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player.Character then
-			table.insert(ignore, player.Character)
+			table.insert(list, player.Character)
 		end
 	end
 	if workspace.CurrentCamera then
-		table.insert(ignore, workspace.CurrentCamera)
+		table.insert(list, workspace.CurrentCamera)
 	end
-	excludeParams.FilterDescendantsInstances = ignore
-	if distance > 0.7 and workspace:Raycast(origin, delta.Unit * (distance - 0.6), excludeParams) then
+	return list
+end
+
+local basinParams = RaycastParams.new()
+basinParams.FilterType = Enum.RaycastFilterType.Include
+basinParams.FilterDescendantsInstances = { Game.basin }
+
+local obstructionParams = RaycastParams.new()
+obstructionParams.FilterType = Enum.RaycastFilterType.Exclude
+obstructionParams.RespectCanCollide = true
+
+local sightParams = RaycastParams.new()
+sightParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local groundParams = RaycastParams.new()
+groundParams.FilterType = Enum.RaycastFilterType.Exclude
+groundParams.RespectCanCollide = true
+
+-- Mirrors the two obstruction tests in ScoopController.aimPoint.
+local function scoopPathClear(origin, target)
+	local delta = target - origin
+	local distance = delta.Magnitude
+	local basinHit = workspace:Raycast(origin, delta, basinParams)
+	if basinHit and (basinHit.Position - origin).Magnitude < distance - 0.6 then
+		return false
+	end
+	obstructionParams.FilterDescendantsInstances = characterList()
+	if distance > 0.7 and workspace:Raycast(origin, delta.Unit * (distance - 0.6), obstructionParams) then
 		return false
 	end
 	return true
 end
 
+-- Mirrors HoseController.sightBlocked for tools with fillNeedsSight.
+local function hoseSightClear(origin, target)
+	local delta = target - origin
+	sightParams.FilterDescendantsInstances = characterList()
+	return workspace:Raycast(origin, delta.Unit * math.max(0.1, delta.Magnitude - 0.2), sightParams) == nil
+end
+
+local function groundHeight(x, z, hintY)
+	local ignore = characterList()
+	table.insert(ignore, Game.water)
+	groundParams.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(Vector3.new(x, math.max(hintY, waterLevel()) + 80, z), Vector3.new(0, -300, 0), groundParams)
+	return hit and hit.Position.Y or hintY
+end
+
 local DIRECTIONS = 16
 
+-- Nearest lake point to `center`, searching outward in rings, honouring the current water level.
 local function nearestWaterPoint(center, minRadius, maxRadius, step, accept)
 	local level = waterLevel()
 	for radius = minRadius, maxRadius, step do
@@ -295,59 +364,115 @@ local function nearestWaterPoint(center, minRadius, maxRadius, step, accept)
 	return nil
 end
 
--- A lake point the server should accept right now from where the player stands, or nil.
-local function pickScoopPoint(reach)
-	local camera = workspace.CurrentCamera
-	local character = LocalPlayer.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not camera or not root then
-		return nil
+local function eyeOffsetOf(character, root)
+	local head = character:FindFirstChild("Head")
+	local offset = head and (head.Position.Y - root.Position.Y) or 1.5
+	return math.clamp(offset, 0.5, 4)
+end
+
+-- Per-kind "can reach this water point from this eye position" test.
+local function makeReachTest(ctx)
+	return function(eye, point)
+		if (point - eye).Magnitude > ctx.reachBudget or point.Y >= eye.Y then
+			return false
+		end
+		if ctx.kind == "Scoop" then
+			return scoopPathClear(eye, point)
+		end
+		if ctx.cfg.fillNeedsSight then
+			return hoseSightClear(eye, point)
+		end
+		return true
 	end
-	local origin = camera.CFrame.Position
-	return nearestWaterPoint(root.Position, 2, math.floor(reach * 0.85), 2, function(point)
-		return (point - origin).Magnitude <= reach and point.Y < origin.Y and clearPath(origin, point)
+end
+
+-- A lake point the server should accept right now from where the player stands, or nil.
+local function pickAimPoint(ctx)
+	local camera = workspace.CurrentCamera
+	local origin
+	if ctx.kind == "Scoop" and camera then
+		origin = camera.CFrame.Position -- ScoopController aims from the camera
+	else
+		origin = ctx.head and ctx.head.Position or ctx.root.Position -- HoseController aims from the head
+	end
+	local reachTest = makeReachTest(ctx)
+	return nearestWaterPoint(ctx.root.Position, 2, math.floor(ctx.reachBudget), 2, function(point)
+		return reachTest(origin, point)
 	end)
 end
 
-local function groundBelow(x, z, fallbackY)
-	local ignore = {}
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player.Character then
-			table.insert(ignore, player.Character)
-		end
-	end
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = ignore
-	local hit = workspace:Raycast(Vector3.new(x, fallbackY + 60, z), Vector3.new(0, -200, 0), params)
-	return hit and (hit.Position + Vector3.new(0, 3, 0)) or Vector3.new(x, fallbackY, z)
-end
-
--- Where to walk so a scoop is possible: the lake point nearest the PourZone, stepped back toward it.
-local function scoopStand(reach, rootY)
+-- Where to stand so a collection is possible at the CURRENT water level.
+-- Searches from the spot nearest the PourZone toward the water and checks the real 3D distance from eye height,
+-- so a receded shoreline (lower level, larger drop to the surface) pulls the standing spot closer to the water.
+local function collectStand(ctx)
+	local level = waterLevel()
 	local now = os.clock()
-	if standCache and now - standCachedAt < 30 then
-		return standCache
+	if standCache
+		and now - standCache.at < Build.StandCacheSeconds
+		and math.abs(standCache.level - level) <= Build.StandLevelTolerance
+		and standCache.reach == ctx.reachBudget
+		and standCache.squeeze == squeeze
+	then
+		return standCache.pos
 	end
+
 	local pour = Game.pourZone.Position
-	local lakePoint = nearestWaterPoint(pour, 2, 200, 4)
+	local lakePoint = nearestWaterPoint(pour, 2, 250, 4)
 	if not lakePoint then
 		return nil
 	end
-	local stand
-	if flatDistance(pour, lakePoint) <= reach * 0.6 then
-		stand = Vector3.new(pour.X, rootY, pour.Z)
-	else
-		local back = Vector3.new(pour.X - lakePoint.X, 0, pour.Z - lakePoint.Z).Unit * (reach * 0.6)
-		stand = groundBelow(lakePoint.X + back.X, lakePoint.Z + back.Z, rootY)
+
+	local flat = Vector3.new(pour.X - lakePoint.X, 0, pour.Z - lakePoint.Z)
+	local direction = flat.Magnitude > 0.5 and flat.Unit or Vector3.new(1, 0, 0)
+	local maxBack = math.min(flat.Magnitude, ctx.reachBudget) - squeeze
+	local reachTest = makeReachTest(ctx)
+
+	local chosen = nil
+	for back = math.max(maxBack, 0), 0, -1 do
+		local x = lakePoint.X + direction.X * back
+		local z = lakePoint.Z + direction.Z * back
+		local ground = groundHeight(x, z, ctx.root.Position.Y)
+		if reachTest(Vector3.new(x, ground + ctx.eyeOffset, z), lakePoint) then
+			chosen = Vector3.new(x, ground + 1, z)
+			break
+		end
 	end
-	standCache, standCachedAt = stand, now
-	return stand
+	if not chosen then
+		chosen = Vector3.new(lakePoint.X, groundHeight(lakePoint.X, lakePoint.Z, ctx.root.Position.Y) + 1, lakePoint.Z)
+	end
+
+	standCache = { pos = chosen, level = level, reach = ctx.reachBudget, squeeze = squeeze, at = now }
+	standCache.reach = ctx.reachBudget
+	return chosen
+end
+
+local function mouthPoint()
+	local head = Game.grandpa:FindFirstChild("Head", true)
+	if head and head:IsA("BasePart") then
+		return head.CFrame:PointToWorldSpace(Build.MouthLocalOffset)
+	end
+	return nil
 end
 
 local function inPourZone(root)
 	local radius = (Game.pourZone:GetAttribute("Radius") or Build.PourZoneDefaultRadius) + Build.PourZoneSlack
 	return flatDistance(root.Position, Game.pourZone.Position) <= radius
+end
+
+local function canSprayFrom(ctx)
+	local mouth = mouthPoint()
+	if not mouth then
+		return false
+	end
+	if not ctx.cfg.sprayAnywhere then
+		local radius = (Game.pourZone:GetAttribute("Radius") or Build.PourZoneDefaultRadius) + Build.HoseRingSlack
+		if flatDistance(ctx.root.Position, Game.pourZone.Position) > radius then
+			return false
+		end
+	end
+	local camera = workspace.CurrentCamera
+	local origin = camera and camera.CFrame.Position or ctx.root.Position
+	return (mouth - origin).Magnitude <= ctx.sprayRange
 end
 
 --------------------------------------------------------------------------
@@ -395,6 +520,14 @@ end
 --------------------------------------------------------------------------
 -- Farm tick
 --------------------------------------------------------------------------
+local function toolStat(toolName, cfg, key)
+	local ok, value = pcall(Game.upg.stat, LocalPlayer, toolName, key)
+	if ok and isFiniteNumber(value) then
+		return value
+	end
+	return cfg[key]
+end
+
 local function gate()
 	local character = LocalPlayer.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -413,22 +546,52 @@ local function gate()
 	end
 
 	local toolName = LocalPlayer:GetAttribute(Build.ToolAttr) or Build.DefaultTool
-	local tool = Game.tools[toolName]
-	if not tool then
+	local cfg = Game.tools[toolName]
+	if type(cfg) ~= "table" then
 		return "unknown tool: " .. tostring(toolName)
 	end
-	if tool.mode == "hold" then
-		return "equip a scoop tool (Hose, Vacuum and Hydro Gatling are not supported)"
-	end
-	local capacity = LocalPlayer:GetAttribute(Build.CapacityAttr) or tool.capacity
+	local kind = cfg.mode == "hold" and "Hose" or "Scoop"
+
+	local capacity = LocalPlayer:GetAttribute(Build.CapacityAttr) or toolStat(toolName, cfg, "capacity")
 	if not isFiniteNumber(capacity) or capacity <= 0 then
 		return "capacity unreadable"
 	end
-	if not isFiniteNumber(tool.reach) then
-		return "tool reach unreadable"
+	local bottomless = Game.upg.BOTTOMLESS_CAP or Build.BottomlessCapFallback
+	local tripTarget = capacity
+	if capacity >= bottomless then
+		local perScoop = toolStat(toolName, cfg, "scoopAmount")
+		perScoop = isFiniteNumber(perScoop) and perScoop > 0 and perScoop or 1
+		tripTarget = perScoop * Build.BottomlessTripScoops
 	end
 
-	return nil, { character = character, root = root, tool = tool, capacity = capacity }
+	local reach
+	if kind == "Hose" then
+		reach = toolStat(toolName, cfg, "reach")
+	else
+		reach = cfg.reach
+	end
+	if not isFiniteNumber(reach) then
+		return "tool reach unreadable"
+	end
+	local margin = kind == "Hose" and Build.HoseReachMargin or Build.ScoopReachMargin
+	local sprayRange = kind == "Hose" and toolStat(toolName, cfg, "sprayRange") or nil
+	if kind == "Hose" and not isFiniteNumber(sprayRange) then
+		return "spray range unreadable"
+	end
+
+	local head = character:FindFirstChild("Head")
+	return nil, {
+		character = character,
+		root = root,
+		head = head,
+		toolName = toolName,
+		cfg = cfg,
+		kind = kind,
+		tripTarget = tripTarget,
+		reachBudget = reach - margin,
+		sprayRange = sprayRange,
+		eyeOffset = eyeOffsetOf(character, root),
+	}
 end
 
 local function farmTick()
@@ -439,76 +602,102 @@ local function farmTick()
 		return
 	end
 
+	local kind = ctx.kind
 	local carried = LocalPlayer:GetAttribute(Build.CarriedAttr) or 0
 	local lakeEmpty = (Game.water:GetAttribute(Build.SpoonsLeftAttr) or 1) <= 0
 
-	if phase == "Scoop" then
-		stopPour()
-		if carried >= ctx.capacity or (lakeEmpty and carried > 0) then
-			stopScoop()
-			phase = "Pour"
+	if phase == "Collect" then
+		if carried >= ctx.tripTarget or (lakeEmpty and carried > 0) then
+			stopCollect(kind)
+			phase = "Deliver"
 			return
 		end
 		if lakeEmpty then
-			stopScoop()
+			stopCollect(kind)
 			report("Paused: the lake is empty")
 			return
 		end
 
 		local now = os.clock()
 		if not aimPoint or now - aimPickedAt > Build.AimRepickSeconds then
-			aimPoint = pickScoopPoint(ctx.tool.reach)
+			aimPoint = pickAimPoint(ctx)
 			aimPickedAt = now
 		end
 
 		if not aimPoint then
-			stopScoop()
-			local stand = scoopStand(ctx.tool.reach, ctx.root.Position.Y)
+			stopCollect(kind)
+			if justWalkedToLake then
+				-- Arrived but still nothing reachable: stand closer to the water next time.
+				squeeze = math.min(squeeze + 1.5, ctx.reachBudget)
+				standCache = nil
+			end
+			local stand = collectStand(ctx)
 			if not stand then
 				report("Paused: no lake point found near the PourZone")
 				return
 			end
 			report("Walking to the lake")
-			walkTo(stand)
+			justWalkedToLake = true
+			if not walkTo(stand) and wanted() then
+				report("Could not reach the lake shore")
+			end
 			aimPickedAt = 0
 			return
 		end
 
+		justWalkedToLake, squeeze = false, 0
 		report(nil)
-		if not scooping or now >= nextScoopSendAt then
-			scooping = true
-			nextScoopSendAt = now + Build.ScoopRefreshSeconds
-			Game.scoopHold:FireServer(true, aimPoint)
+		if kind == "Scoop" then
+			if not scooping or now >= nextScoopSendAt then
+				scooping = true
+				nextScoopSendAt = now + Build.ScoopRefreshSeconds
+				Game.scoopHold:FireServer(true, aimPoint)
+			end
+		else
+			sendHose("fill", aimPoint)
 		end
 	else
-		stopScoop()
 		aimPoint = nil
 		if carried <= 0 then
-			stopPour()
-			phase = "Scoop"
+			stopDeliver(kind)
+			phase = "Collect"
 			return
 		end
 		if Game.grandpa:GetAttribute(Build.GrandpaStateAttr) == "Doze" then
-			stopPour()
+			stopDeliver(kind)
 			report("Paused: Grandpa is asleep")
 			return
 		end
 		if Game.grandpa:GetAttribute(Build.GrandpaWantsChocoAttr) == true then
-			stopPour()
+			stopDeliver(kind)
 			report("Paused: Grandpa wants chocolate")
 			return
 		end
-		if not inPourZone(ctx.root) then
-			stopPour()
+
+		local inPlace
+		if kind == "Scoop" then
+			inPlace = inPourZone(ctx.root)
+		else
+			inPlace = canSprayFrom(ctx)
+		end
+		if not inPlace then
+			stopDeliver(kind)
 			report("Walking to Grandpa")
-			walkTo(Vector3.new(Game.pourZone.Position.X, ctx.root.Position.Y, Game.pourZone.Position.Z))
+			local zone = Game.pourZone.Position
+			if not walkTo(Vector3.new(zone.X, ctx.root.Position.Y, zone.Z)) and wanted() then
+				report("Could not reach Grandpa's PourZone")
+			end
 			return
 		end
 
 		report(nil)
-		if not pouring then
-			pouring = true
-			Game.pourHold:FireServer(true)
+		if kind == "Scoop" then
+			if not pouring then
+				pouring = true
+				Game.pourHold:FireServer(true)
+			end
+		else
+			sendHose("spray", nil)
 		end
 	end
 end
@@ -541,7 +730,7 @@ local function pickUpgrade()
 end
 
 local function upgradeTick()
-	if (LocalPlayer:GetAttribute(Build.IntroAttr)) == true then
+	if LocalPlayer:GetAttribute(Build.IntroAttr) == true then
 		return
 	end
 	local choice = pickUpgrade()
@@ -558,8 +747,15 @@ local function upgradeTick()
 end
 
 --------------------------------------------------------------------------
--- Loops
+-- Loops and lifecycle
 --------------------------------------------------------------------------
+local function resetPlan()
+	phase = "Collect"
+	aimPoint, aimPickedAt = nil, 0
+	standCache = nil
+	squeeze, justWalkedToLake = 0, false
+end
+
 local function setFarm(value)
 	value = value == true
 	if Farm.Enabled == value then
@@ -570,8 +766,7 @@ local function setFarm(value)
 		releaseAll()
 		lastReason = nil
 	end
-	phase = "Scoop"
-	aimPoint, aimPickedAt = nil, 0
+	resetPlan()
 end
 
 task.spawn(function()
@@ -602,12 +797,22 @@ task.spawn(function()
 	end
 end)
 
--- Release any held remote state if the character dies mid-hold.
-local diedConnection = LocalPlayer.CharacterRemoving:Connect(function()
+-- Release held remote state and re-plan if the character dies or the tool changes mid-run.
+table.insert(connections, LocalPlayer.CharacterRemoving:Connect(function()
 	releaseAll()
-	phase = "Scoop"
-	aimPoint = nil
-end)
+	resetPlan()
+end))
+table.insert(connections, LocalPlayer:GetAttributeChangedSignal(Build.ToolAttr):Connect(function()
+	releaseAll()
+	resetPlan()
+end))
+
+local function disconnectAll()
+	for _, connection in ipairs(connections) do
+		connection:Disconnect()
+	end
+	table.clear(connections)
+end
 
 --------------------------------------------------------------------------
 -- WindUI front end (API written from memory of Footagesus/WindUI, unverified here)
@@ -618,7 +823,7 @@ end)
 if not okLoad or type(WindUI) ~= "table" then
 	alive = false
 	releaseAll()
-	diedConnection:Disconnect()
+	disconnectAll()
 	warn("[LakeAutoFarm] WindUI failed to load: " .. tostring(WindUI))
 	return
 end
@@ -642,7 +847,7 @@ local Tab = Window:Tab({ Title = "Farm", Icon = "droplets" })
 
 Tab:Toggle({
 	Title = "Auto Farm",
-	Desc = "Scoops the lake, walks to Grandpa and pours. Equip a scoop tool first.",
+	Desc = "Works with whichever tool you have equipped, including Hose, Vacuum and Hydro Gatling.",
 	Default = false,
 	Callback = function(state)
 		setFarm(state)
@@ -666,7 +871,7 @@ local function unload()
 	Farm.Enabled = false
 	Upgrader.Enabled = false
 	releaseAll()
-	diedConnection:Disconnect()
+	disconnectAll()
 	pcall(function()
 		Window:Destroy()
 	end)
